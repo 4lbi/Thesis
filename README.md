@@ -16,7 +16,7 @@ Il documento finale è prodotto a partire da [`main.tex`](main.tex), che importa
 ```text
 .
 ├── main.tex             # File principale della tesi
-├── bibliography.bib    # Bibliografia BibLaTeX
+├── bibliography.bib     # Bibliografia BibLaTeX
 ├── chapters/            # Capitoli e sezioni della tesi
 ├── images/              # Figure e risultati sperimentali
 └── main.pdf             # PDF generato
