@@ -1,0 +1,120 @@
+\chapter{VLM}
+\section{Introduzione}
+
+I modelli visivo-linguistici (VLM) rappresentano una grande evoluzione nella comprensione delle immagini.
+In generale, il loro funzionamento si basa sulla collaborazione in sequenza di tre elementi principali: il processo inizia con un modulo visivo che "osserva" l'immagine e ne cattura i dettagli essenziali; successivamente, un traduttore converte queste informazioni visive in un formato leggibile dall'intelligenza artificiale, creando un ponte tra le immagini e le parole.
+Infine, entra in azione il cervello linguistico, che riceve i dati visivi tradotti assieme alle richieste testuali dell'utente, combinandoli per elaborare una risposta discorsiva e di senso compiuto.
+
+Questo flusso di lavoro integrato rappresenta un grande passo in avanti rispetto alla computer vision classica, ma è importante fare una distinzione rispetto ai modelli tradizionali ultra-specializzati, come YOLO o SAM.
+Essendo focalizzati su un unico obiettivo visivo, questi algoritmi tradizionali rimangono nettamente superiori in termini di precisione geometrica: riescono a localizzare e isolare gli elementi nella foto con un'accuratezza che i VLM, dovendo gestire simultaneamente la visione e l'elaborazione del linguaggio, non possono eguagliare.
+
+La vera forza dei VLM, tuttavia, non risiede nel ritaglio geometrico perfetto, ma nella profonda comprensione semantica della scena. Mentre modelli come YOLO o SAM si limitano a individuare meccanicamente la presenza isolata all'interno della foto, un VLM utilizza il ragionamento logico per interpretare il contesto, deducendo e spiegando a parole quello che avviene all'interno dell'immagine.
+In questo modo, i VLM superano la rigidità dei compiti tradizionali, unendo la semplice percezione visiva alla capacità di ragionare e dialogare.
+
+\newpage
+
+\section{Qwen 3}
+
+Creato da Alibaba Cloud, Qwen3-VL è un modello costruito per elaborare contemporaneamente un'enorme quantità di informazioni. La sua forza sta nel riuscire a gestire testi lunghissimi mescolati a decine di immagini e video, senza mai perdere il filo del discorso. \cite{qwen3_github}
+
+\noindent
+Per fare questo, utilizza due soluzioni intelligenti: la prima gli permette di avere un senso dell'orientamento eccezionale, capendo perfettamente dove si trova un oggetto nello spazio di una foto o l'esatto ordine cronologico in un video; la seconda lo aiuta a non perdersi nemmeno i dettagli visivi più piccoli, unendoli al testo in modo coerente. Grazie a queste abilità avanzate, Qwen3-VL può svolgere compiti pratici sorprendenti: è in grado di "guardare" l'interfaccia di un computer o di uno smartphone per capire come usarla, oppure può osservare lo schizzo grafico di un sito web e scrivere in automatico il codice informatico per costruirlo. \cite{ollama_qwen} \cite{lmstudio_qwen}
+
+\subsection{Training}
+
+Qwen3-VL è un modello puramente linguistico: non calcola coordinate geometriche, ma genera semplici stringhe di testo (token) osservando un'immagine.
+
+\noindent
+Questo significa che ogni forma di addestramento applicata è, tecnicamente, l'addestramento di un modello linguistico. Non potendo utilizzare una classica funzione di errore spaziale, come la "loss di detection" tipica della computer vision, l'unica vera scelta riguarda l'origine del segnale usato per valutare e correggere le risposte del modello. Per questo motivo, sono state adottate due diverse politiche di apprendimento.
+
+\subsubsection{LoRA}
+
+Prima di analizzare le politiche di addestramento, occorre chiarire come renderlo computazionalmente sostenibile.
+
+\noindent
+La tecnica LoRA (Low-Rank Adaptation) nasce da una semplice intuizione: per adattare un modello serve solo una piccola correzione mirata, non una riscrittura da zero. Invece di modificare milioni di parametri originali, i quali vengono "congelati". LoRA concentra l'aggiornamento in due tabelle leggerissime, con poche migliaia di valori che agiscono come un filtro correttivo. A fine addestramento, queste tabelle vengono fuse nel modello di base, mantenendone inalterata la velocità di esecuzione.
+
+\noindent
+È importante precisare che LoRA non è un obiettivo di apprendimento (non decide cosa il modello deve imparare), ma una pura tecnica di efficienza (decide quali parti aggiornare). Per questo può essere abbinata a qualsiasi metodo di addestramento, compresi quelli descritti nei paragrafi successivi.
+
+\subsubsection{Cross-Entropy}
+Nel fine-tuning supervisionato disponiamo, per ogni immagine, della risposta esatta che vorremmo far produrre al modello.
+
+\noindent
+Conoscendo in anticipo il risultato atteso, possiamo fornire al modello l'intera sequenza corretta insieme all'immagine e alla domanda, sfruttando una tecnica nota come teacher forcing. Invece di fargli generare il testo parola per parola, il modello elabora tutta la sequenza simultaneamente in un unico passaggio, calcolando quale probabilità avrebbe assegnato a ciascuna parola corretta. Da questo calcolo si ricava il margine di errore, che viene poi utilizzato in un unico passaggio a ritroso per aggiornare le matrici di LoRA.
+
+\noindent
+Tuttavia, il modo in cui questo errore viene calcolato presenta un limite strutturale profondo, fondamentale per comprendere i risultati dei nostri esperimenti. Il sistema valuta le parole prodotte dal modello come un vocabolario di simboli del tutto distinti, tra i quali non esiste un concetto di vicinanza.
+Nella formula di base, il modello non ha modo di intuire che quei numeri rappresentano una posizione nello spazio e che, geometricamente parlando, "sbagliare di poco" è infinitamente meglio che "sbagliare di molto".
+
+\subsubsection{GRPO}
+
+Tramite Reinforcement Learning si confrontano i contorni disegnati dal modello con quelli reali, assegnando un punteggio da 0 a 1 che penalizza il sistema se dimentica oggetti, ne inventa di inesistenti o li inquadra in modo impreciso.
+
+\noindent
+Per capire se un punteggio sia effettivamente buono, abbiamo utilizzato la tecnica GRPO (Group Relative Policy Optimization). Il principio è semplice: il modello genera diverse risposte alternative per la stessa immagine.
+Quelle che ottengono un punteggio superiore alla media del gruppo vengono premiate e rinforzate, mentre quelle sotto la media vengono scoraggiate.
+
+\noindent
+Il prezzo da pagare per questa libertà è puramente computazionale. Poiché il modello deve materialmente generare diverse risposte parola per parola, invece di leggerne una sola in simultanea.
+
+\newpage
+
+\subsubsection{Risultati}
+
+Le tre configurazioni confrontate sono cumulative: Base è il modello pre-addestrato senza alcun adattamento, C-E aggiunge il fine-tuning supervisionato con cross-entropy, GRPO applica sopra quest'ultimo un ulteriore stadio di apprendimento per rinforzo guidato da una ricompensa basata sull'IoU.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{lccccc}
+        \toprule
+        & 
+        \textbf{\begin{tabular}[c]{@{}c@{}}P \end{tabular}} &
+        \textbf{\begin{tabular}[c]{@{}c@{}}R \end{tabular}} &
+        \textbf{\begin{tabular}[c]{@{}c@{}}$F1$ \end{tabular}} &
+        \textbf{\begin{tabular}[c]{@{}c@{}}AP$_{50}$ \end{tabular}} &
+        \textbf{\begin{tabular}[c]{@{}c@{}}AP$_{50:95}$ \end{tabular}} \\
+        \midrule
+        Base & 0.9020 & \textbf{0.9460} & 0.9235 & 0.8556 & \textbf{0.5746} \\
+        C-E  & \textbf{0.9387} & 0.9287 & 0.9337 & 0.8878 & 0.5586 \\
+        GRPO & 0.9360 & 0.9332 & \textbf{0.9346} & \textbf{0.8884} & 0.5610 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\noindent
+I risultati dei test mostrano due tendenze opposte: l'adattamento migliora nettamente la precisione generale riducendo i falsi positivi, ma peggiora l'accuratezza geometrica dei contorni.
+
+\noindent
+Questo accade perché il sistema di addestramento non comprende la vicinanza spaziale: per il modello, sbagliare una coordinata di un pixel o di cento comporta la stessa penalità. Impara quindi molto bene cosa identificare e quanti oggetti ci sono, ma non dove tracciarne esattamente i bordi.
+
+\noindent
+Inoltre, abbiamo notato che il modello adattato diventa più prudente, rischiando di ignorare qualche oggetto reale pur di non generare falsi allarmi. L'apprendimento per rinforzo ha corretto in parte questo sbilanciamento, ma non ha migliorato il disegno dei contorni, a causa di parametri di addestramento risultati troppo conservativi.
+
+\noindent
+In conclusione, l'adattamento di un VLM migliora enormemente la sua capacità di riconoscere il contenuto dell'immagine, ma non affina il ritaglio spaziale. La precisione millimetrica resta un suo limite strutturale, un compito in cui i rilevatori specializzati rimangono insuperabili.
+
+\newpage
+
+\section{Gemma 4}
+
+Sviluppato da Google, Gemma 4 è un modello che si distingue per la sua capacità di adattarsi a situazioni diverse. La sua innovazione principale è la capacità di guardare le immagini con livelli di "attenzione" regolabili.
+In pratica, se il compito richiede molta precisione, il modello può analizzare l'immagine in modo minuzioso; se invece serve rapidità, come quando deve elaborare i numerosi fotogrammi di un video, può dare un'occhiata più veloce e generale. \cite{google_gemma4}
+
+\noindent
+Poiché Gemma 4 è un ottimo "pensatore" ma è meno adatto a calcolare con esattezza millimetrica la posizione geometrica delle cose, spesso viene fatto lavorare in squadra con programmi visivi più classici.
+In questa collaborazione, il programma tradizionale fa il lavoro manuale (come isolare gli oggetti nella foto), mentre Gemma 4 fa da "mente", analizzando il risultato e scrivendo un resoconto comprensibile a parole.
+
+\subsection{Risultati}
+
+Per verificare se una maggiore capacità di elaborazione potesse superare i limiti evidenziati, abbiamo confrontato Qwen3-VL (8 miliardi di parametri) con la versione di Gemma 4 da 31 miliardi di parametri. La scelta di impiegare modelli di sviluppatori differenti ha un fine puramente esplorativo: l'obiettivo è analizzare le potenzialità e i limiti strutturali della tecnologia VLM nel suo complesso, senza alcuna intenzione di focalizzarsi su una competizione tra produttori.
+
+\noindent
+Mantenendo l'addestramento tramite cross-entropy (come fatto per Qwen3-VL), i risultati di Gemma 4 si sono rivelati inaspettatamente simili a quelli del modello più piccolo. L'aumento esponenziale dei parametri non ha prodotto alcun salto qualitativo significativo, mostrando solo variazioni marginali: una leggera diminuzione della precision a fronte di un lieve miglioramento della recall.
+
+\noindent
+Questo esito conferma che il collo di bottiglia nella localizzazione non risiede nella dimensione del modello, ma nel metodo di apprendimento. Poiché la cross-entropy tratta le coordinate come semplici stringhe di testo prive di nozioni spaziali, un modello più intelligente non possiede comunque gli strumenti matematici per disegnare contorni migliori. Va tuttavia precisato che l'esperimento è stato condotto su un dataset di dimensioni ridotte; è quindi probabile che la scarsità di esempi abbia penalizzato il modello da 31 miliardi, limitandone il pieno potenziale computazionale.
+
+\noindent
+In sintesi, pur tenendo conto del limite imposto dai dati, l'esperimento dimostra che scalare i parametri da 8B a 31B si rivela inefficace se la funzione di loss non è strutturalmente adatta al compito geometrico richiesto. Aumentare le dimensioni di un VLM, da solo, non basta a trasformarlo in un rilevatore spaziale di precisione.

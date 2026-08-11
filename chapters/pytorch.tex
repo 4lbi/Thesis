@@ -1,0 +1,25 @@
+\section{Pytorch}
+
+PyTorch è un framework di deep learning open source basato su software usato per creare reti neurali.
+Combina la libreria di machine learning (ML) di Torch con un'API di alto livello basata su Python.
+La sua flessibilità e facilità d'uso, tra gli altri benefici, lo hanno reso il principale framework di ML per le comunità accademiche e di ricerca.
+
+\subsection{Tensori}
+
+In qualsiasi algoritmo di machine learning, anche quelli applicati a informazioni apparentemente non numeriche come suoni o immagini, i dati devono essere rappresentati numericamente.
+In PyTorch ciò viene ottenuto tramite tensori che fungono da unità fondamentali di dati utilizzate per il calcolo sulla piattaforma. \\
+
+\noindent
+Dal punto di vista linguistico, “tensore” è un termine generico che si riferisce ad alcune entità matematiche più familiari come :
+\begin{itemize}
+    \item Un vettore è un tensore monodimensionale contenente più scalari dello stesso tipo. Una tupla è un tensore monodimensionale contenente diversi tipi di dati.
+    \item Una matrice è un tensore bidimensionale contenente più vettori dello stesso tipo.
+    \item I tensori con tre o più dimensioni, come i tensori tridimensionali usati per rappresentare le immagini RGB negli algoritmi di computer vision, sono collettivamente denominati tensori N-dimensionali.
+\end{itemize}
+
+\noindent
+Oltre a codificare gli input e gli output di un modello, i tensori di PyTorch codificano i parametri del modello: pesi e gradienti che vengono "appresi" nella machine learning.
+
+\subsection{Grafici}
+I grafici di calcolo dinamico (DCG) sono il modo in cui i modelli di deep learning vengono rappresentati in PyTorch.
+Nel contesto del deep learning, questi grafici traducono essenzialmente il codice di una rete neurale in un diagramma di flusso che indica le operazioni eseguite in ciascun nodo e le dipendenze tra diversi strati nella rete, cioè la disposizione di fasi e sequenze che trasformano i dati di input in dati di output. \cite{pytorch}

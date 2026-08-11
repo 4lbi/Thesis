@@ -1,0 +1,109 @@
+\chapter{Dettagli tecnici}
+
+\section{Rete Neurale}
+
+Una Rete Neurale è un modello matematico che simula il funzionamento della mente biologica umana, ed è utilizzata per tentare di risolvere problemi ingegneristici di intelligenza artificiale. \cite{wiki_nn}
+
+Nel nostro caso, per la risoluzione di problemi di visione artificiale, utilizzeremo le reti neurali multi livello (o multi layer), chiamate anche MLP (Multi Layer Perceptron), che appartengono ad una sotto categoria del Machine Learning chiamata Deep Learning.
+
+Da notare che non tutti i modelli di Intelligenza Artificiale sono basati sulle reti neurali; esistono anche altre tecnologie utilizzate nel mondo del Machine Learning come i Decision Trees, i quali creano diagrammi di flusso basati su condizioni specifiche, oppure le Random Forest, cioè l'unione di più Decision Tree indipendenti. \\
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/neural_network.png}
+  \cite{wiki_nn_image}
+  \caption{Percettrone Multistrato}
+  \label{fig:neural_network}
+\end{figure}
+
+\newpage
+
+\subsection{Layers}
+
+In una Rete Neurale i layers rappresentano i diversi strati della rete. In ogni strato sono presenti uno o più neuroni chiamati unità. \\
+
+\noindent
+Sono generalmente presenti tre strati :
+\begin{enumerate}
+    \item Input : con unità che rappresentano i campi di input.
+    \item Hidden Layers : con uno o più strati.
+    \item Output : con una o più unità che rappresentano i campi obiettivo.
+\end{enumerate}
+
+\noindent
+I dati di input vengono presentati nel primo strato e i valori vengono propagati da ciascun neurone a ogni neurone nello strato successivo, ed alla fine viene fornito un risultato nello strato di output. \cite{ibm_neural_model}
+
+\subsection{Pesi}
+
+Le unità sono connesse con varie intensità di connessione, dette \hypertarget{weights}{pesi}.
+
+Tutti i pesi inizialmente sono casuali e le risposte ottenute dalla rete risulteranno probabilmente prive di senso.
+
+La rete apprende generando una previsione per ogni input dato e correggendo i pesi ogni volta che viene sbagliata una previsione. Questo processo, anche detto \hyperlink{epoch}{\textit{epoca}}, viene ripetuto molte volte e la rete continua a migliorare le sue previsioni finché uno o più criteri di interruzione non vengono soddisfatti. \cite{ibm_neural_model}
+
+\subsection{Bias}
+
+Il parametro di \hypertarget{b}{bias} è quello che, durante il calcolo matematico che avviene all'interno della singola unità (neurone) permette di aggiungere un'errore al modello, considerato troppo semplice, con l'obbiettivo di catturare una maggiore complessità dei dati.
+
+\newpage
+
+\section{Dataset}
+Un Dataset è una raccolta strutturata di dati, che in questo caso servirà per la fase di addestramento (training) dei nostri modelli. \\
+
+\noindent
+In generale, un Dataset per l'addestramento di Reti Neurali è suddiviso in :
+\begin{itemize}
+    \item Training set : immagini usate per il training del nostro modello.
+    \item Validation set : immagini utilizzate durante l'addestramento, per valutare le prestazioni del modello su dati non visti e per effettuare la messa a punto dei parametri.
+    \item Test set : un insieme di immagini utilizzate alla fine dell'addestramento, per valutare le prestazioni finali del modello, su dati completamente nuovi che non sono stati utilizzati per il training.
+\end{itemize}
+
+Il Validation set è opzionale, ma molto utile per migliorare la qualità del training del modello.
+
+\subsection{Qualità di un Dataset}
+La qualità di un Dataset è data dalla correttezza delle sue annotazioni, cioè dalla coerenza di quello che mi stanno dicendo i dati al suo interno, ma anche dalla varietà dei dati al suo interno, perché avrò molti più esempi da mostrare al mio modello nella fase di addestramento.
+
+Perciò se i dati sono coerenti ai problemi del mondo reale di cui si occuperà il modello, impararne i pattern e le correlazioni consentirà al modello addestrato di fare previsioni accurate su nuovi dati.
+
+\newpage
+
+\section{Training}
+
+L'addestramento di un modello è la fase del Machine Learning (ML) in cui avviene l'apprendimento. Nel ML, l'apprendimento implica la regolazione dei parametri di un modello ML. Questi parametri includono \hyperlink{weights}{\textit{pesi}} e \hyperlink{b}{\textit{bias}} nelle funzioni matematiche che costituiscono i loro algoritmi.
+
+Durante questa fase, ogni volta che un input arriva ad un nodo, viene moltiplicato per il peso (weight) associato a quella specifica connessione, e la somma di tutti questi input con un certo valore di bias ne determinerà poi i valori in output.
+
+Dal punto di vista matematico, l'obiettivo di questo apprendimento è quello di ridurre al minimo una funzione di perdita che quantifica l'errore degli output nelle attività di addestramento. Quando l'output della funzione di perdita scende al di sotto di una soglia predeterminata, ovvero l'errore del modello nelle attività di addestramento è sufficientemente piccolo, il modello viene considerato "addestrato". \cite{training_nn}
+
+\subsection{Training from scratch}
+
+In questa tipologia di training, il modello viene addestrato su dati annotati senza partire da pesi pre-trainati, quindi senza usare come base un modello già allenato.
+
+Partendo da zero, ovvero from scratch, i pesi non sono definiti ma vengono assegnati dei numeri casuali che, soltanto durante il processo di training, verranno modificati per ottimizzare le prestazioni.
+
+Questo tipo di training è valido quando abbiamo a disposizione un numero considerevole di dati annotati e l'utilizzo del modello è molto specifico.
+
+\subsection{Transfer Learning}
+
+Nel caso in cui ci trovassimo a lavorare con un dataset limitato, o nel caso in cui l'obiettivo sia quello di riuscire a risparmiare tempo e risorse, sarebbe possibile partire da un modello già allenato, cioè da un modello su cui è già stata fatto il training.
+
+L'idea è quella di "trasferire" ad un modello provvisto di pesi e con dei parametri di precisione già significativi, la parte di conoscenza necessaria per riconoscere i dati annotati nel nostro dataset.
+
+Si inizia quindi dal modello pre-trainato e lo si adatta (fine-tuning) al nostro target, spesso congelando i primi layers ed ottimizzando solamente quelli finali.
+
+\section{Epoca}
+Un'\hypertarget{epoch}{epoca} rappresenta un passaggio completo del dataset attraverso l'algoritmo in fase di learning, è un concetto fondamentale nel training delle reti neurali, che permette al modello di imparare continuando costantemente a rivedere le stesse immagini, o i medesimi elementi del dataset.
+
+Il numero di epoch si specifica solitamente in ogni procedura di training e determina quante volte il modello imparerà dal set di train del dataset, influenzando le performance e la qualità del modello.\\
+
+\noindent
+Scegliere il numero di epoch corretto è molto importante perché se viene scelto in maniera errata può creare due problemi:
+\begin{itemize}
+    \item Underfitting: il modello non è stato trainato per un numero sufficiente di epochs.
+    Le performances non sono adeguate né sul set di training né su quello di test.
+    
+    \item Overfitting: il modello è stato trainato per troppi epochs.
+    In questo caso memorizza i dati di training in maniera troppo approfondita e perde le sue abilità di analizzare i nuovi dati. Ha una precisione eccellente sul training set ma scarsa sul dataset di validazione.
+\end{itemize}
+
+Una tecnica comune per evitare l'overfitting è quella dell'early stopping, nella quale il training viene fermato quando le performances sul set di validazione smettono di migliorare. A volte è possibile specificare un parametro chiamato patience, che specifica dopo quanti epochs "non migliorativi" il training deve fermarsi. \cite{epoch_ultralytics}.

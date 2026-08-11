@@ -1,0 +1,25 @@
+\chapter{Segformer}
+
+Negli ultimi anni, questo settore ha vissuto una profonda rivoluzione guidata dall'introduzione dei modelli Transformer. Originariamente concepiti per l'elaborazione del linguaggio naturale, questi modelli sono stati adattati con successo all'analisi delle immagini grazie al pionieristico Vision Transformer (ViT), presentato nel 2020.
+Il ViT ha dimostrato che è possibile analizzare le immagini scomponendole in una griglia di piccoli tasselli (patch) e trattandoli in modo simile alle parole di una frase. \cite{vit_2020} \\
+
+\noindent
+Sebbene il ViT abbia raggiunto risultati eccezionali, presentava limiti critici per la segmentazione: restituiva mappe a bassa risoluzione spaziale e richiedeva risorse di calcolo troppo elevate per immagini di grandi dimensioni.
+Per superare questi ostacoli e rendere la segmentazione altamente efficiente, la ricerca ha prodotto architetture di nuova generazione come SegFormer. \cite{segformer_2021} \\
+
+\noindent
+SegFormer è un framework progettato per bilanciare efficienza e precisione senza appesantire la potenza di calcolo. Il cuore di questa architettura è il Mix Transformer (MiT), un encoder strutturato in modo gerarchico. A differenza del ViT originale, il MiT estrae informazioni a scale diverse, riducendo progressivamente la risoluzione dell'immagine mentre ne arricchisce il significato semantico.
+Inoltre, il MiT elimina la necessità di assegnare coordinate di posizione fisse ai pixel, consentendo al modello di adattarsi in modo naturale a immagini di qualsiasi dimensione.
+
+Le informazioni estratte dall'encoder vengono poi inviate a un decoder con una struttura estremamente leggera basata esclusivamente su MLP. Evitando moduli di decodifica complessi, questo design snello fonde i dettagli geometrici dei primissimi livelli con la forte comprensione contestuale degli ultimi livelli.
+
+\newpage
+
+\noindent
+Nonostante SegFormer sia molto efficiente, esso opera all'interno di un cosiddetto "vocabolario chiuso": la rete è programmata per riconoscere in modo automatico solo uno specifico e limitato insieme di categorie prestabilite durante l'addestramento. L'attuale frontiera della visione artificiale si sta invece muovendo verso i modelli open-vocabulary multimodali, il cui massimo esponente è SAM 3.
+
+SAM 3 introduce una capacità innovativa nota come "Segmentazione di Concetti basata su Prompt". Mentre SegFormer richiede etichette numeriche predefinite, SAM 3 permette all'utente di rilevare, segmentare e tracciare qualsiasi oggetto o concetto guidando il modello tramite una frase di testo, un'immagine di esempio o un click del mouse.
+Questa versatilità estrema non si limita alle singole foto, ma si estende nativamente al tracciamento coerente lungo i fotogrammi di un video. \cite{sam3_meta} \\
+
+\noindent
+In conclusione, mentre architetture snelle come SegFormer rimangono molto valide per applicazioni specifiche in tempo reale e con risorse computazionali limitate, i cosiddetti Foundation Models come SAM 3 estendono le potenzialità della segmentazione verso un vocabolario illimitato.

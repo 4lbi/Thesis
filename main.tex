@@ -1,0 +1,114 @@
+\documentclass[12pt,twoside]{report}
+
+% --- Lingua ed encoding ---
+\usepackage{helvet}
+\usepackage[english,italian]{babel}
+
+\usepackage{fontspec}
+
+% --- Gestione Bibliografia (Caricato UNA sola volta) ---
+\usepackage{csquotes} % Necessario per babel e biblatex
+\usepackage[backend=biber, style=numeric, sorting=none]{biblatex}
+\addbibresource{bibliography.bib}
+
+\usepackage{booktabs}
+\usepackage{amsmath}
+
+% --- Font moderni e micro-tipografia ---
+\usepackage{lmodern}
+\usepackage{microtype} 
+
+% --- Geometria della pagina ---
+\usepackage[a4paper,width=150mm,top=25mm,bottom=25mm,bindingoffset=6mm]{geometry}
+
+% --- Personalizzazione dei Titoli ---
+\usepackage{titlesec}
+
+% --- Modifica lo stile dei capitoli ---
+\titleformat{\chapter}[hang]
+{\normalfont\huge\bfseries}
+{\thechapter.}
+{15pt}
+{\Huge}
+
+% --- Spaziatura ---
+\usepackage{setspace} 
+\onehalfspacing
+
+% --- Grafica ---
+\usepackage{graphicx}
+\usepackage{subcaption}
+\graphicspath{{images/}}
+\usepackage{float}
+\usepackage{comment}
+
+\setlength{\headheight}{14.5pt}
+
+% --- Codice ---
+\usepackage{listings}
+\usepackage[dvipsnames]{xcolor}
+\lstset{
+	frame=tb,
+	language=Python,
+	aboveskip=3mm,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	basicstyle={\footnotesize\ttfamily},
+	numberstyle=\tiny\color{lightgray},
+	keywordstyle=\color{RoyalBlue},
+	stringstyle=\color{Cyan},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=3,
+	numbers=left    
+}
+
+% --- Supporto Indice Analitico ---
+\usepackage{imakeidx}
+\makeindex
+
+% --- Intestazioni e Piè di pagina ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[RO,LE]{\chaptername~\thechapter} 
+\fancyfoot[CE,CO]{\thepage}
+\renewcommand{\headrulewidth}{0.05pt}
+\renewcommand{\footrulewidth}{0.05pt}
+
+% --- Links ---
+\usepackage[hidelinks]{hyperref} 
+
+% --- Dati Tesi ---
+\title{
+	{Titolo della Tesi} \\
+	\vspace{1em}
+	{\large Università degli Studi di Verona}
+}
+\author{Alberto Dosso}
+\date{\today}
+
+\begin{document}
+	
+	% --- Pagine iniziali (Frontmatter) ---
+	\pagenumbering{roman}
+	\maketitle
+	\tableofcontents
+	\cleardoublepage 
+	
+	% --- Corpo della Tesi (Mainmatter) ---
+	\pagenumbering{arabic} 
+	
+	\include{chapters/introduzione}
+	\include{chapters/dettagli_tecnici}
+	\include{chapters/pytorch}
+	\include{chapters/yolo}
+	\include{chapters/sam3}
+	\include{chapters/segformer.tex}
+	\include{chapters/VLM.tex}
+	\include{chapters/GroundingDINO.tex}
+	
+	\printbibliography[heading=bibintoc, title={Bibliografia}]
+	
+\end{document}

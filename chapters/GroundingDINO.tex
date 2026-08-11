@@ -1,0 +1,18 @@
+\chapter{Grounding DINO}
+
+Storicamente, l'Object Detection è stata dominata da reti neurali convoluzionali come YOLO. Pur avendo rivoluzionato il settore grazie all'elaborazione ultra-rapida dell'immagine in un singolo passaggio per restituire i bounding box, YOLO è un sistema Closed-Set, cioè è capace di riconosce solo le categorie per cui è stato esplicitamente addestrato e fallisce su oggetti al di fuori di questo vocabolario. \cite{redmon2016yolo} \\
+
+\noindent
+Per superare questo limite, sono nati modelli multimodali Open-Set come Grounding DINO. Il termine "grounding" indica la capacità di ancorare un concetto testuale a un'entità fisica nell'immagine. Fornendo un'immagine e una descrizione a parole, il modello estrae le caratteristiche visive e testuali tramite due Backbone dedicati, entrambi basati sulla tecnologia Transformer. Utilizzando poi meccanismi di Cross-Attention, fa "dialogare" queste fonti: l'immagine si allinea al significato delle parole e viceversa. Il risultato è la generazione di bounding box precisi per qualsiasi oggetto descritto, senza necessità di riaddestramento. \cite{liu2023grounding} \\
+
+\noindent
+Mentre Grounding DINO eccelle nel rilevamento tramite bounding box, un'altra evoluzione parallela basata sui Transformer è il Segment Anything Model (SAM). Pur condividendo tecnologie simili, i due si differenziano per obiettivi e risoluzione spaziale:
+
+\begin{itemize}
+    \item L'obiettivo geometrico (YOLO e Grounding DINO): approccio sintetico incentrato sulle coordinate esterne, ideale per il conteggio o il tracciamento rapido nella scena.
+    
+    \item L'obiettivo topologico (SAM): non ci si limita a inscatolare l'oggetto, ma genera una maschera esatta che ne segue i contorni reali.
+\end{itemize}
+
+\noindent
+In sintesi, la Computer Vision odierna offre strumenti complementari: l'efficienza di YOLO per contesti chiusi e noti; la flessibilità open-set di Grounding DINO per localizzare concetti testuali; e la precisione al pixel di SAM per estrarre le forme nel dettaglio.
