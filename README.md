@@ -1,8 +1,6 @@
 # Tesi di laurea
 
-Questo repository contiene il progetto LaTeX della tesi di laurea di Alberto Dosso, sviluppata presso l'Università degli Studi di Verona.
-
-La tesi tratta alcuni dei principali approcci recenti alla computer vision e al deep learning, con particolare attenzione a rilevamento e segmentazione delle immagini. Dopo un'introduzione ai concetti fondamentali — reti neurali, dataset, training, transfer learning e metriche di valutazione — vengono analizzati e messi a confronto diversi modelli e strumenti:
+Questa tesi tratta alcuni dei principali approcci recenti alla computer vision e al deep learning, con particolare attenzione a rilevamento e segmentazione delle immagini. Dopo un'introduzione ai concetti fondamentali — reti neurali, dataset, training, transfer learning e metriche di valutazione — vengono analizzati e messi a confronto diversi modelli e strumenti:
 
 - PyTorch;
 - YOLO26 e le relative metriche, procedure di training e inferenza;
@@ -21,7 +19,6 @@ Il documento finale è prodotto a partire da [`main.tex`](main.tex), che importa
 ├── bibliography.bib    # Bibliografia BibLaTeX
 ├── chapters/            # Capitoli e sezioni della tesi
 ├── images/              # Figure e risultati sperimentali
-├── watch.sh             # Ricompilazione automatica al salvataggio
 └── main.pdf             # PDF generato
 ```
 
@@ -79,15 +76,6 @@ Per compilare manualmente il documento:
 ```bash
 tectonic -X compile main.tex
 ```
-
-Per ricompilare automaticamente la tesi ogni volta che viene modificato un file `.tex` o `.bib`:
-
-```bash
-chmod +x watch.sh
-./watch.sh
-```
-
-Lo script usa `kpsewhich` per individuare i file di BibLaTeX e `entr` per monitorare le modifiche. Il PDF generato è `main.pdf`.
 
 ## Licenza
 
