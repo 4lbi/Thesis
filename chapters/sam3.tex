@@ -1,26 +1,44 @@
 \chapter{SAM3}
 
-Il Segment Anything Model 3 (SAM 3) è un modello foundation di computer vision sviluppato da Meta e integrato nella libreria Ultralytics, progettato per compiti di rilevamento, segmentazione di istanze (instance segmentation) e tracciamento di oggetti all'interno di sequenze video. Rispetto alle versioni precedenti (SAM 1 e SAM 2), le quali limitavano la segmentazione a un singolo oggetto individuato tramite prompt visivi puntuali (come coordinate o riquadri delimitatori), SAM 3 introduce il paradigma della Promptable Concept Segmentation (PCS). Grazie a questo approccio a vocabolario aperto (open-vocabulary), il modello è in grado di identificare e segmentare contemporaneamente tutte le istanze appartenenti a un determinato concetto visivo presente nella scena. Tali concetti possono essere specificati tramite descrizioni in linguaggio naturale (es. "gatto a strisce"), esemplari visivi di riferimento o combinazioni di entrambi.
+Il Segment Anything Model 3 (SAM 3) è un modello foundation di computer vision sviluppato da Meta e integrato nella libreria Ultralytics,
+progettato per compiti di rilevamento, segmentazione di istanze (instance segmentation) e tracciamento di oggetti all'interno di sequenze video.
+Rispetto alle versioni precedenti (SAM 1 e SAM 2), le quali limitavano la segmentazione a un singolo oggetto individuato tramite prompt visivi puntuali (come coordinate o riquadri delimitatori),
+SAM 3 introduce il paradigma della Promptable Concept Segmentation (PCS). Grazie a questo approccio a vocabolario aperto (open-vocabulary),
+il modello è in grado di identificare e segmentare contemporaneamente tutte le istanze appartenenti a un determinato concetto visivo presente nella scena.
+Tali concetti possono essere specificati tramite descrizioni in linguaggio naturale (es. "gatto a strisce"),
+esemplari visivi di riferimento o combinazioni di entrambi.
 
-Dal punto di vista architetturale, SAM 3 disaccoppia la fase di riconoscimento da quella di localizzazione mediante l'uso di un token di presenza globale. Il sistema separa nettamente il modulo di rilevamento — basato su un'architettura di tipo DETR con fusion encoder — dal tracker video con memoria ereditato da SAM 2. Addestrato sul vasto dataset SA-Co (comprendente oltre 5 milioni di immagini e 1,4 miliardi di maschere), SAM 3 raggiunge prestazioni allo stato dell'arte con un raddoppio dell'efficienza nella segmentazione per concetto e un tempo medio d'inferenza di circa 30 ms per immagine. \cite{sam3}
+Dal punto di vista architetturale, SAM 3 disaccoppia la fase di riconoscimento da quella di localizzazione mediante l'uso di un token di presenza globale.
+Il sistema separa nettamente il modulo di rilevamento — basato su un'architettura di tipo DETR con fusion encoder — dal tracker video con memoria ereditato da SAM 2.
+Addestrato sul vasto dataset SA-Co (comprendente oltre 5 milioni di immagini e 1,4 miliardi di maschere),
+SAM 3 raggiunge prestazioni allo stato dell'arte con un raddoppio dell'efficienza nella segmentazione per concetto e un tempo medio d'inferenza di circa 30 ms per immagine. \cite{sam3}
 
 \newpage
 
 \section{Generazione del Dataset}
 
-Inizialmente si era partiti da un insieme primario di immagini privo delle annotazioni necessarie per l'addestramento dei modelli di object detection. Date le elevate capacità di generalizzazione e accuratezza di SAM 3, il modello è stato impiegato come strumento di annotazione automatica (pseudo-labeling) per la costruzione del dataset finale.
+Inizialmente si era partiti da un insieme primario di immagini privo delle annotazioni necessarie per l'addestramento dei modelli di object detection.
+Date le elevate capacità di generalizzazione e accuratezza di SAM 3, il modello è stato impiegato come strumento di annotazione automatica (pseudo-labeling) per la costruzione del dataset finale.
 
-Nello specifico, la funzionalità PCS ha consentito di estrarre le regioni d'interesse fornendo in input al modello le immagini accompagnate da prompt testuali descrittivi delle varie categorie di capi d'abbigliamento da identificare. L'elaborazione ha prodotto per ciascuna immagine le relative maschere di segmentazione per le istanze rilevate.
+Nello specifico, la funzionalità PCS ha consentito di estrarre le regioni d'interesse
+fornendo in input al modello le immagini accompagnate da prompt testuali descrittivi delle varie categorie di capi d'abbigliamento da identificare.
+L'elaborazione ha prodotto per ciascuna immagine le relative maschere di segmentazione per le istanze rilevate.
 
-Poiché l'obiettivo finale risiedeva nell'addestramento del modello di object detection YOLO26 — il quale richiede in input delimitatori rettangolari (bounding box) anziché maschere poligonali — si è proceduto alla conversione sintetica delle annotazioni: a partire dai contorni di ciascuna maschera generata da SAM 3, sono state calcolate le coordinate estreme per ricavare i bounding box corrispondenti. Tale procedura ha permesso di trasformare efficacemente un processo di segmentazione di istanze in un dataset strutturato per l'addestramento di modelli di object detection.
+Poiché l'obiettivo finale risiedeva nell'addestramento del modello di object detection YOLO26 — il quale richiede in input delimitatori rettangolari (bounding box)
+anziché maschere poligonali — si è proceduto alla conversione sintetica delle annotazioni: a partire dai contorni di ciascuna maschera generata da SAM 3,
+sono state calcolate le coordinate estreme per ricavare i bounding box corrispondenti.
+Tale procedura ha permesso di trasformare efficacemente un processo di segmentazione di istanze in un dataset strutturato per l'addestramento di modelli di object detection.
 
 \section{Script}
 
-Lo script realizza un annotatore automatico: prende in ingresso una cartella di immagini prive di etichette e produce in uscita un dataset di object detection in formato YOLO, senza alcun intervento manuale. Il ruolo di SAM3 è quello di annotatore zero-shot: non viene addestrato né adattato al dominio, ma viene interrogato in linguaggio naturale con i nomi delle classi che si vogliono ottenere.
+Lo script realizza un annotatore automatico: prende in ingresso una cartella di immagini prive di etichette e produce in uscita un dataset di object detection in formato YOLO,
+senza alcun intervento manuale. Il ruolo di SAM3 è quello di annotatore zero-shot:
+non viene addestrato né adattato al dominio, ma viene interrogato in linguaggio naturale con i nomi delle classi che si vogliono ottenere.
 L'annotazione umana, che è la voce di costo dominante nella costruzione di un dataset, viene sostituita dalla definizione di una lista di prompt testuali.
 
 Un punto concettuale importante è che SAM3 è un modello di segmentazione, quindi restituisce maschere a livello di pixel.
-La detection non è quindi un output nativo del modello, ma una proiezione: la maschera è la rappresentazione intermedia da cui si ricava la bounding box. Questo spiega perché lo stesso identico flusso possa alimentare, senza costi aggiuntivi di inferenza, anche un dataset di segmentazione semantica.
+La detection non è quindi un output nativo del modello, ma una proiezione: la maschera è la rappresentazione intermedia da cui si ricava la bounding box.
+Questo spiega perché lo stesso identico flusso possa alimentare, senza costi aggiuntivi di inferenza, anche un dataset di segmentazione semantica.
 
 \newpage
 
@@ -37,9 +55,12 @@ from transformers import Sam3Model, Sam3Processor
 
 \subsection{Configurazione}
 
-Tutto ciò che definisce il dataset è dichiarativo: le cartelle di input e output, l'elenco delle classi e le soglie. L'ordine di CLASSES definisce implicitamente il class\_id numerico usato nelle annotazioni YOLO.
+Tutto ciò che definisce il dataset è dichiarativo: le cartelle di input e output, l'elenco delle classi e le soglie.
+L'ordine di CLASSES definisce implicitamente il class\_id numerico usato nelle annotazioni YOLO.
 
-CLASS\_PROMPTS introduce una distinzione utile da sottolineare: la classe del dataset non coincide necessariamente con il prompt dato al modello. Categorie generali come "accessories" sono concetti astratti che il modello riconosce male; interrogandolo invece con termini concreti (hat, cap) la resa migliora sensibilmente, e tutte le maschere trovate confluiscono comunque nell'unica classe di destinazione. \\
+CLASS\_PROMPTS introduce una distinzione utile da sottolineare: la classe del dataset non coincide necessariamente con il prompt dato al modello.
+Categorie generali come "accessories" sono concetti astratti che il modello riconosce male; interrogandolo invece con termini concreti (hat, cap)
+la resa migliora sensibilmente, e tutte le maschere trovate confluiscono comunque nell'unica classe di destinazione. \\
 
 \begin{lstlisting}
 IMAGES_DIR = Path("dataset/images")          # immagini senza etichette
@@ -48,7 +69,7 @@ OUTPUT_DIR = Path("output/detection")        # dataset generato
 CLASSES = [
 	"upper clothing",
 	"lower clothing",
-	"footwear",
+	"shoes",
 	"long dress",
 	"accessories",
 	"bag",
@@ -71,7 +92,9 @@ DTYPE = torch.float16      # tipo di dato
 
 \subsection{Main}
 
-Prepara la struttura delle cartelle e carica il modello una sola volta fuori dal ciclo e itera sulle immagini. Ogni immagine annotata produce una copia nella cartella images/ e il corrispondente file di etichette in labels/; le immagini in cui non viene rilevato nulla vengono semplicemente saltate e non entrano nel dataset. \\
+Prepara la struttura delle cartelle e carica il modello una sola volta fuori dal ciclo e itera sulle immagini.
+Ogni immagine annotata produce una copia nella cartella images/ e il corrispondente file di etichette in labels/;
+le immagini in cui non viene rilevato nulla vengono semplicemente saltate e non entrano nel dataset. \\
 
 \begin{lstlisting}
 def main():
@@ -107,26 +130,67 @@ def main():
 
 \newpage
 
+\subsection{Risultati}
+
+\begin{figure}[h!]
+  \centering
+  \begin{minipage}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/esempio_originale.jpg}
+    \label{fig:original_image}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[b]{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{images/esempio_overlay.jpg}
+    \label{fig:overlay_image}
+  \end{minipage}
+\end{figure}
+
+\noindent
+Mettiamo a confronto la fotografia di catalogo in ingresso (a sinistra) e il risultato della segmentazione (a destra). \\
+\noindent
+L'input e' un'immagine a figura intera di 1850x2500 pixel, priva di annotazioni:
+il sistema non riceve né riquadri né alcuna indicazione sul numero di capi presenti.
+In uscita ogni capo riconosciuto è evidenziato da una maschera a livello di pixel, con una tinta distinta,
+il riquadro che lo delimita e l'etichetta della categoria assegnata. \\
+\noindent
+Nell'esempio vengono individuati cinque capi distribuiti su quattro categorie: la giacca in pelliccia (upper clothing, confidenza 0.961),
+i pantaloni (lower clothing, 0.984), la borsa (bag, 0.969) e le due calzature, segmentate come istanze separate (shoes, 0.941 e 0.930).
+Le maschere seguono il profilo del capo e non il riquadro che lo contiene: la giacca esclude il volto e le mani,
+e le regioni assegnate a capi diversi non condividono alcun pixel.
+Le due calzature occupano rispettivamente lo 0,6\% e lo 0,4\% della superficie dell'immagine,
+al di sotto della soglia d'area minima prevista per i capi principali: vengono
+conservate grazie al limite ridotto applicato alle categorie di piccola dimensione (calzature, borse e copricapi).
+
+\newpage
+
 \subsection{Ottimizzazioni}
 
-Durante l'utilizzo di questo modello, si è notato un carico di computazione abbastanza importante, ottenendo delle tempistiche alquanto pessime, in media secondi ad immagine processata. Perciò questo tipo di problematica è stata risolta applicando principalmente due ottimizzazioni.
+Durante l'utilizzo di questo modello, si è notato un carico di computazione abbastanza importante,
+ottenendo delle tempistiche alquanto pessime, in media secondi ad immagine processata.
+Perciò questo tipo di problematica è stata risolta applicando principalmente due ottimizzazioni.
 
 \begin{enumerate}
 	\item Riuso dell'encoder visivo. \\
-	SAM3, come tutti i modelli della famiglia SAM, è composto da un encoder visivo pesante e da una testa di decodifica leggera condizionata dal prompt. L'encoder dipende solo dall'immagine, non dal testo: rieseguirlo per ogni prompt significherebbe ripetere inutilmente la parte più costosa del modello.
+	SAM3, come tutti i modelli della famiglia SAM, è composto da un encoder visivo pesante e da una testa di decodifica leggera condizionata dal prompt.
+	L'encoder dipende solo dall'immagine, non dal testo: rieseguirlo per ogni prompt significherebbe ripetere inutilmente la parte più costosa del modello.
 	Qui l'embedding visivo viene calcolato una sola volta per immagine, e poi passato a tutte le chiamate successive.
 	
-	Con la configurazione attuale - sei classi per un totale di nove prompt - significa un solo passaggio dell'encoder invece di nove: il costo per immagine diventa una codifica visiva più nove decodifiche leggere, e cresce in modo quasi piatto all'aumentare del numero di classi.
+	Con la configurazione attuale - sei classi per un totale di nove prompt - significa un solo passaggio dell'encoder invece di nove:
+	il costo per immagine diventa una codifica visiva più nove decodifiche leggere, e cresce in modo quasi piatto all'aumentare del numero di classi.
 	Questa è di fatto l'ottimizzazione che rende praticabile l'annotazione di dataset con molte categorie.
 	
 	\item Inferenza in fp16. \\
 	Il modello è caricato in mezza precisione. Su GPU dotate di Tensor Core il guadagno è netto e, trattandosi di sola inferenza senza accumulo di gradienti, l'output è di fatto equivalente a quello in fp32.
 \end{enumerate}
 
-
 \section{Conclusioni}
 
-L'utilizzo di questo modello si è rivelato di grande aiuto nello sviluppo del nostro lavoro, sia per la creazione di nuovi dataset a partire dalle sole immagini, sia per l'elevata precisione garantita. Grazie alle sue capacità di segmentazione, è stato possibile automatizzare parte del processo di annotazione, riducendo i tempi di preparazione dei dati e migliorandone la qualità.
-La segmentazione consente di ottenere una rappresentazione più accurata rispetto a un semplice box, il quale include porzioni di sfondo e altri elementi non pertinenti, introducendo rumore nei dati. Questo approccio permette invece di identificare esclusivamente i pixel dell'oggetto di interesse, generando dataset più precisi e coerenti.
+L'utilizzo di questo modello è stato fondamentale per il nostro lavoro:
+le sue capacità di segmentazione hanno permesso di automatizzare parte dell'annotazione, riducendo i tempi di preparazione e aumentando la qualità dei dati.
+A differenza di un semplice bounding box che introduce rumore includendo lo sfondo, la segmentazione isola esclusivamente i pixel dell'oggetto di interesse,
+generando dataset più precisi e coerenti a partire dalle sole immagini.
 
-Come verrà mostrato nei capitoli successivi, il modello oggetto di questo studio otterrà risultati superiori rispetto agli altri modelli analizzati. Sebbene il confronto non sia perfettamente allineato sotto tutti gli aspetti metodologici, le prestazioni ottenute confermeranno comunque l'efficacia dell'approccio basato sulla segmentazione.
+Come mostrato nei capitoli successivi, il modello otterrà prestazioni superiori rispetto agli altri analizzati,
+confermando l'efficacia di questo approccio pur in presenza di lievi disallineamenti metodologici nel confronto.
