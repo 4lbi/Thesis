@@ -1,13 +1,16 @@
 # Tesi di laurea
 
-Questa tesi tratta alcuni dei principali approcci recenti alla computer vision e al deep learning, con particolare attenzione a rilevamento e segmentazione delle immagini. Dopo un'introduzione ai concetti fondamentali — reti neurali, dataset, training, transfer learning e metriche di valutazione — vengono analizzati e messi a confronto diversi modelli e strumenti:
+Questa tesi tratta alcuni dei principali approcci recenti alla computer vision, al deep learning e al recupero strutturato delle informazioni. Dopo un'introduzione ai concetti fondamentali — reti neurali, dataset, training, transfer learning e metriche di valutazione — vengono analizzati diversi modelli e strumenti:
 
 - PyTorch;
 - YOLO26 e le relative metriche, procedure di training e inferenza;
-- Segment Anything (SAM e SAM3), inclusa la generazione del dataset;
+- Segment Anything (SAM e SAM3), con generazione del dataset, risultati sperimentali e ottimizzazioni dell'inferenza;
 - SegFormer;
 - Vision-Language Models (Qwen 3 e Gemma 4);
-- Grounding DINO.
+- Grounding DINO;
+- Graph RAG, con l'integrazione tra il database vettoriale Qdrant e il database a grafo Neo4j.
+
+La parte conclusiva descrive una pipeline applicata a un catalogo di abbigliamento: SAM3 segmenta i capi presenti nelle fotografie, una ricerca ibrida li riconduce agli articoli del catalogo e Neo4j rappresenta prodotti, outfit e abbinamenti attraverso un grafo a proprietà. Il capitolo illustra anche il modello dei dati, le strategie di ricerca, le ottimizzazioni adottate e i limiti noti dell'approccio.
 
 Il documento finale è prodotto a partire da [`main.tex`](main.tex), che importa i capitoli dalla cartella [`chapters/`](chapters/) e utilizza le immagini presenti in [`images/`](images/). La bibliografia è contenuta in [`bibliography.bib`](bibliography.bib).
 
@@ -17,8 +20,9 @@ Il documento finale è prodotto a partire da [`main.tex`](main.tex), che importa
 .
 ├── main.tex             # File principale della tesi
 ├── bibliography.bib     # Bibliografia BibLaTeX
-├── chapters/            # Capitoli e sezioni della tesi
-├── images/              # Figure e risultati sperimentali
+├── chapters/            # Capitoli, inclusa la pipeline Graph RAG
+├── images/              # Figure, risultati e visualizzazioni del grafo
+├── .gitignore           # File macOS e artefatti LaTeX ignorati da Git
 └── main.pdf             # PDF generato
 ```
 
@@ -28,21 +32,31 @@ Il progetto è stato scritto in **Visual Studio Code** su macOS, utilizzando:
 
 - l'estensione **LaTeX Workshop** per l'editing e la compilazione dal pannello di VS Code;
 - **Tectonic** come motore di compilazione LaTeX;
-- **BibLaTeX** con backend **Biber** per la bibliografia;
+- **BibLaTeX** con backend **BibTeX** per la bibliografia;
 - font moderni gestiti tramite `fontspec`;
 - lingua italiana e inglese tramite `babel`.
 
-Il documento usa la classe `report` e include, tra gli altri, i pacchetti `graphicx`, `subcaption`, `amsmath`, `booktabs`, `microtype`, `listings`, `imakeidx`, `fancyhdr` e `hyperref`.
+Il documento usa la classe `report` e include, tra gli altri, i pacchetti `graphicx`, `subcaption`, `amsmath`, `amssymb`, `booktabs`, `microtype`, `listings`, `imakeidx`, `fancyhdr`, `hyperref` e `tikz`. Quest'ultimo viene utilizzato per rappresentare graficamente la struttura del modello dati Graph RAG.
 
 ## Installazione
 
-Installare Tectonic e il prerequisito usato dallo script di sorveglianza, `entr`:
+Installare Tectonic tramite Homebrew:
 
 ```bash
-brew install tectonic entr
+brew install tectonic
 ```
 
-La versione di Biber deve essere compatibile con la versione di BibLaTeX utilizzata da Tectonic. In questo progetto è stata utilizzata Biber **2.17** per macOS Intel:
+La configurazione attuale usa BibTeX, gestito direttamente durante la compilazione da Tectonic, quindi non richiede un'installazione separata di Biber.
+
+Per verificare l'installazione:
+
+```bash
+tectonic --version
+```
+
+### Nota sulla compatibilità con Biber
+
+Una versione precedente del progetto utilizzava Biber. Poiché la sua versione deve essere compatibile con quella di BibLaTeX distribuita da Tectonic, su macOS Intel era stata installata manualmente la versione **2.17**:
 
 ```bash
 mkdir -p ~/.local/bin
@@ -54,20 +68,19 @@ xattr -d com.apple.quarantine ~/.local/bin/biber
 rm -f /tmp/biber.tar.gz
 ```
 
-Assicurarsi inoltre che `~/.local/bin` sia incluso nel `PATH`:
+In tale configurazione, `~/.local/bin` deve essere incluso nel `PATH`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Per verificare le installazioni:
+La versione può essere verificata con:
 
 ```bash
-tectonic --version
 biber --version
 ```
 
-> Il comando per Biber riportato sopra è specifico per macOS Intel (`x86_64`). Su macOS Apple Silicon potrebbe essere necessario utilizzare il binario appropriato per l'architettura in uso.
+> Questa procedura è conservata come riferimento ed è necessaria soltanto impostando nuovamente `backend=biber` in `main.tex`. Il binario indicato è specifico per macOS Intel (`x86_64`); su Apple Silicon occorre usare una versione adatta all'architettura in uso.
 
 ## Compilazione
 
