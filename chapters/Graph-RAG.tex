@@ -90,3 +90,316 @@ Inoltre, l'adozione di Neo4j si rivela fondamentale per l'implementazione di log
 e i gradi di separazione tra i vari nodi, il sistema può dedurre connessioni semantiche non banali tra molteplici prodotti. Ciò abilita lo sviluppo di funzionalità
 di alto livello, come i sistemi di raccomandazione context-aware, capaci di suggerire combinazioni di articoli basate su affinità strutturali e logiche di business
 codificate direttamente all'interno della rete relazionale del grafo.
+
+\newpage
+
+\section{Pipeline}
+
+La pipeline utilizzata trasforma le fotografie indossate di un catalogo di abbigliamento in un grafo di abbinamenti. Per ogni prodotto si seleziona una fotografia
+a figura intera; un modello di segmentazione guidato da testo isola il capo in vendita e gli altri capi indossati; ogni capo viene ricondotto a un articolo
+del catalogo attraverso filtri di colore e forma e una ricerca per somiglianza visiva; infine le co-occorrenze osservate vengono scritte in un grafo a proprietà.
+
+\noindent
+I dati di partenza sono l'elenco dei prodotti, con codice, titolo e immagini, e le fotografie indossate di ciascun prodotto.
+Il risultato è un grafo in cui i capi sono nodi e le co-occorrenze nelle fotografie sono archi.
+
+\subsection{Architettura}
+
+La pipeline è composta da quattro stadi eseguiti in sequenza dove ogni stadio legge da disco il risultato del precedente, e questo permette di ripetere uno stadio
+senza rifare quelli a monte. I due stadi più costosi sono quelli di segmentazione e riconoscimento, eseguiti entrambi da servizi remoti: la segmentazione
+da un worker su GPU, il riconoscimento da un servizio di ricerca visiva.
+
+\subsubsection{Selezione della fotografia}
+
+Nel catalogo preso in considerazione, contenente migliaia di prodotti sono state tenute le singole fotografie indossate,
+e poi è stato applicato un filtro andando che escludeva:
+\begin{itemize}
+  \item prodotti composti da più capi venduti insieme, come i set, per i quali
+    non esiste un singolo capo da riconoscere;
+  \item le fotografie tagliate a metà, o più in generale quelli non a figura completa;
+  \item le fotografie che non ritraggono una sola persona a figura intera.
+\end{itemize}
+
+\noindent
+Per ogni fotografia selezionata poi si prepara un insieme ordinato di nomi del capo in vendita, dal più specifico al più generico: il titolo con il sostantivo tradotto in inglese, il solo sostantivo tradotto e una categoria generica (per esempio \textit{upper clothing}). La traduzione è necessaria perché il modello di segmentazione è addestrato su testo in inglese.
+Il nome generico serve anche a gestire i termini ambigui, cioè dove una parola che indica due capi diversi viene tradotta secondo il significato più frequente, e il nome generico copre l'altro, perché viene provato solo quando i primi due hanno fallito.
+
+\subsection{Segmentazione}
+
+Come spiegato anche precedentemente viene utilizzato SAM~3 per la la fase di segmentazione, un modello che accetta come prompt una frase testuale e restituisce, per ogni istanza trovata, un riquadro, una maschera e un punteggio di confidenza.
+
+\subsubsection{Doppio passaggio}
+
+La parte costosa dell'inferenza è la codifica visiva dell'immagine, che viene calcolata una sola volta e riusata per tutti i prompt, in due giri:
+\begin{enumerate}
+  \item \textbf{Capo in vendita}: si provano i nomi del prodotto in ordine, fermandosi al primo che produce una rilevazione valida. Se nessuno funziona, il capo viene dichiarato non trovato, senza ripiegare su parole generiche, visto che un ripiego produrrebbe un ritaglio indistinguibile da un successo.
+  
+  \item \textbf{Altri capi}: si prova un vocabolario fisso di frasi, ricondotte a un insieme ridotto di etichette. Per lo stesso tipo di capo si usano più frasi, perché nessuna le trova tutte, \textit{skirt}, per esempio, riconosce gonne che \textit{lower clothing} non rileva.
+\end{enumerate}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{p{7.2cm}l}
+    \hline
+    Frasi del vocabolario & Etichetta \\
+    \hline
+    \texttt{upper clothing}, \texttt{coat}, \texttt{bikini top}  & \texttt{upper clothing} \\
+    \texttt{lower clothing}, \texttt{skirt}, \texttt{midi-skirt} & \texttt{lower clothing} \\
+    \texttt{dress}                                               & \texttt{dress} \\
+    \texttt{footwear}, \texttt{boot}                             & \texttt{shoes} \\
+    \texttt{headwear}                                            & \texttt{hat} \\
+    \texttt{bag}, \texttt{belt}, \texttt{scarf}, \texttt{underwear} & uguale alla frase \\
+    \hline
+  \end{tabular}
+  \caption{Il vocabolario del secondo giro e le etichette in uscita}
+  \label{tab:pip-vocabolario}
+\end{table}
+
+\newpage
+
+\subsection{Filtri di qualità}
+
+Le rilevazioni del modello passano attraversano sei filtri prima di diventare ritagli.
+
+\paragraph{Confidenza.}
+Si scartano le rilevazioni con punteggio inferiore a una soglia $\tau_s$, più bassa per le calzature, che il modello riconosce con confidenza minore.
+
+\paragraph{Area.}
+Si scartano i riquadri troppo piccoli, che corrispondono a dettagli come un bottone, e quelli che coprono quasi tutta l'immagine. Calzature, borse e copricapi sono piccoli per natura e hanno un limite inferiore più basso.
+
+\paragraph{Occupazione.}
+Misura quanto il capo riempie il proprio ritaglio, il numero di pixel della maschera $M$, diviso per il quadrato del lato maggiore del riquadro di larghezza $w$ e altezza $h$:
+\begin{equation}
+  \mathrm{occ} = \frac{|M|}{\max(w, h)^{2}}
+\end{equation}
+La misura diminuisce in entrambi i casi in cui un ritaglio diventa illeggibile, quando è quasi vuoto e quando è lungo e sottile.
+Si richiede $\mathrm{occ} \geq \tau_{\mathrm{occ}}$, con una soglia bassa per i capi grandi e una alta per calzature e accessori, per i quali un ritaglio è utile solo se l'oggetto si riconosce a colpo d'occhio.
+
+\paragraph{Sovrapposizione.}
+Frasi diverse possono rilevare lo stesso capo. Due riquadri $A$ e $B$ sono considerati lo stesso capo quando l'intersezione sull'unione supera una soglia $\tau_{\mathrm{IoU}}$, e si conserva quello col punteggio più alto:
+\begin{equation}
+  \mathrm{IoU}(A, B) = \frac{|A \cap B|}{|A| + |B| - |A \cap B|}
+\end{equation}
+
+\paragraph{Un solo capo inferiore.}
+Sotto una gonna il modello rileva anche i collant. Si conserva una sola rilevazione con etichetta \textit{lower clothing}, quella con il punteggio più alto.
+
+\paragraph{Coerenza dei vestiti.}
+Su un completo in due pezzi la sagoma è continua e anche la frase \textit{dress} produce una rilevazione; viceversa, su un vestito le frasi per i capi superiori e per quelli inferiori ne rilevano le due metà. Il filtro sfrutta un'informazione nota, cioè il capo in vendita; chi indossa la gonna o la maglia in vendita non indossa anche un vestito, a meno che il capo in vendita non sia un capospalla, che si porta sopra un abito. Nel primo caso le rilevazioni \textit{dress} vengono scartate; nel secondo decide la geometria, attraverso la misura di contenimento di un riquadro $a$ in un riquadro $b$:
+\begin{equation}
+  \mathrm{dentro}(a, b) = \frac{|a \cap b|}{|a|}
+\end{equation}
+Se nel riquadro del vestito sono contenuti, oltre una soglia $\tau_{\mathrm{in}}$, sia un capo superiore sia uno inferiore, si tratta di un due pezzi e si scarta il vestito; se ne è contenuto uno solo, quello è metà del vestito e viene scartato.
+
+\subsubsection{Rimozione del capo in vendita}
+
+Il secondo giro rileva anche il capo in vendita, chiamato con la sua parola generica, e questo va rimosso per non abbinare un capo a se stesso. Si confronta il ritaglio del capo in vendita con quello di ciascun capo del secondo giro, dopo averli ridotti alla stessa piccola risoluzione su fondo uniforme. La somiglianza è il complemento della differenza assoluta media fra i $n$ valori di colore delle due immagini:
+\begin{equation}
+  s(a, b) = 1 - \frac{1}{255\,n} \sum_{i=1}^{n} |a_i - b_i|
+\end{equation}
+Si rimuove il capo più somigliante, se supera una soglia $\tau_{\mathrm{sim}}$. Poiché i due ritagli provengono dalla stessa fotografia, quando rappresentano lo stesso capo sono quasi identici, e un confronto pixel per pixel è sufficiente.
+Ogni ritaglio è restituito come immagine con canale alfa, in cui la maschera rende trasparente tutto ciò che non appartiene al capo.
+
+\subsection{Riconoscimento a catalogo}
+
+Ogni ritaglio deve essere ricondotto a un articolo del catalogo. Il riconoscimento è una sequenza di tre operazioni, dove le prime due restringono lo spazio di ricerca, e la terza sceglie l'articolo.
+
+\subsubsection{Colore e forma}
+
+Il colore dominante del ritaglio viene espresso nella stessa terminologia usata dal catalogo. Prima della misura la trasparenza viene riempita con un colore che nessun capo presenta, così che lo sfondo non venga
+scambiato per il capo. Se la porzione di ritaglio effettivamente misurata è troppo piccola, si cerca senza colore, dove un colore sbagliato escluderebbe l'articolo corretto.
+
+\noindent
+La forma, cioè la categoria del capo (per esempio felpa, gonna, stivale), si ottiene con una ricerca per vicinanza (\emph{k-nearest neighbours}) in una raccolta di riferimento di capi etichettati: il ritaglio
+viene trasformato in un vettore, e la categoria viene ereditata dal vicino più simile. La categoria viene scartata quando il vicino è troppo lontano o quando fra i vicini più prossimi compaiono troppe categorie diverse.
+
+\subsubsection{Ricerca}
+
+La ricerca a catalogo è ibrida: interroga più rappresentazioni di ogni articolo (fotografia del prodotto, fotografia indossata, testo) e ne fonde le classifiche con la \emph{Reciprocal Rank Fusion}. Il punteggio fuso indica la posizione in classifica ma non la somiglianza; come somiglianza si usa la similarità coseno
+del canale visivo.
+
+\noindent
+Lo stesso ritaglio viene cercato in sei modi, che variano un fattore alla volta, e si sceglie l'articolo con la somiglianza $\mathrm{sim}_k$ più alta:
+\begin{equation}
+  c^{*} = \arg\max_{k \in \{1, \dots, 6\}} \mathrm{sim}_{k}
+\end{equation}
+Una ricerca filtrata per categoria che non restituisce risultati viene ripetuta senza la categoria, perché una categoria sbagliata esclude l'articolo corretto.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{clll}
+    \hline
+    & Immagine cercata & Fotografie del catalogo & Filtro \\
+    \hline
+    1 & ritaglio      & indossate & zona, colore, categoria \\
+    2 & ritaglio      & indossate & zona, colore \\
+    3 & ritaglio      & indossate & zona, categoria \\
+    4 & ritaglio      & prodotto  & zona, colore, categoria \\
+    5 & capo di riferimento & indossate & zona, colore, categoria \\
+    6 & capo di riferimento & prodotto  & zona, colore, categoria \\
+    \hline
+  \end{tabular}
+  \caption{Strategie di ricerca}
+  \label{tab:pip-strategie}
+\end{table}
+
+\noindent
+La scelta del massimo non è neutrale. Le strategie 2 e 3 rimuovono una parte del filtro e cercano in un insieme che contiene quello della strategia 1, quindi la loro somiglianza non può essere inferiore; le strategie 5 e 6 confrontano un'immagine pulita con immagini pulite e tendenzialmente tenderanno a valori più alti.
+
+\subsubsection{Ripiego per le calzature}
+
+Il catalogo contiene poche calzature rispetto a quelle che compaiono nelle fotografie. Per i ritagli di calzature, se la somiglianza a catalogo è inferiore a una soglia $\tau_{\mathrm{cat}}$, si adotta il capo di riferimento trovato durante il riconoscimento della forma, purché sia anch'esso una calzatura e la sua somiglianza superi una soglia $\tau_{\mathrm{rif}}$. Le due somiglianze provengono da sistemi diversi e non sono confrontabili, quindi il ripiego interviene per soglia e non per confronto. Il capo di riferimento può
+appartenere a un altro marchio e non essere acquistabile.
+
+\newpage
+
+\subsection{Modello dei dati}
+
+Il grafo è un grafo a proprietà con due tipi di nodo e tre tipi di arco:
+\begin{verbatim}
+(Prodotto)-[:HA_OUTFIT]->(Outfit)-[:CONTIENE]->(Prodotto)
+(Prodotto)-[:ABBINATO_A]->(Prodotto)
+\end{verbatim}
+
+\noindent
+Un nodo \texttt{Prodotto} rappresenta un articolo, identificato dal suo codice: un capo che compare in più fotografie resta un solo nodo. Un nodo \texttt{Outfit} rappresenta per l'appunto un outfit completo. Ogni outfit ha un proprietario, il capo in vendita, collegato con \texttt{HA\_OUTFIT}, e contiene tutti i capi visibili, proprietario compreso, collegati con \texttt{CONTIENE}. L'arco \texttt{ABBINATO\_A} riassume tutti gli outfit, andando direttamente dal capo in vendita a ogni capo visto nell'outfit completo.
+
+\noindent
+Il nodo \texttt{Outfit} risolve un problema preciso, con il solo \texttt{ABBINATO\_A} che aggrega gli outfit e perde l'informazione su quali capi fossero indossati insieme, chiedendo che cosa abbinare a un capo si otterrebbero la gonna di una fotografia e le scarpe di un'altra, due capi mai visti sulla stessa persona; passando per l'outfit si ottiene invece un look completo effettivamente indossato. \\
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \begin{tabular}{llp{7cm}}
+        \hline
+            Elemento & Attributi & Significato \\
+            \hline
+                \texttt{Prodotto}    & \texttt{code}        & codice dell'articolo \\
+                & \texttt{product\_id} & presente solo sui capi la cui fotografia è stata elaborata \\
+                & \texttt{zona}        & etichetta del ritaglio che ha riconosciuto il capo, presente solo sui capi visti in fotografie altrui \\
+                \texttt{Outfit}      & \texttt{product\_id} & identificativo del capo proprietario della fotografia \\
+                \texttt{CONTIENE}    & \texttt{somiglianza} & somiglianza del ritaglio all'articolo, assente verso il proprietario \\
+                \texttt{ABBINATO\_A} & \texttt{volte}       & numero di osservazioni della coppia \\
+                & \texttt{lift}        & lift della coppia, equazione \\
+                & \texttt{somiglianza} & somiglianza migliore fra le osservazioni \\
+                \texttt{HA\_OUTFIT}  & \multicolumn{1}{c}{$\varnothing$} & \multicolumn{1}{c}{$\varnothing$} \\
+        \hline
+    \end{tabular}
+    \caption{Attributi del grafo}
+    \label{tab:pip-proprieta}
+\end{table}
+
+\newpage
+
+\subsection{Costruzione}
+
+La costruzione legge i risultati di ogni prodotto e produce una riga per ogni capo osservato, nella forma (outfit, proprietario, capo, zona, somiglianza). Da queste righe derivano sia gli outfit sia gli archi diretti. Tre regole selezionano le righe:
+\begin{itemize}
+  \item un capo entra solo se la sua somiglianza supera la soglia della sua fonte, $\tau_{\mathrm{cat}}$ per il catalogo e $\tau_{\mathrm{rif}}$ per il riferimento;
+  \item delle calzature se ne conserva una sola per outfit completo, la più somigliante, perché i due ritagli di scarpe mostrano lo stesso paio da due angolazioni e possono essere ricondotti ad articoli diversi;
+  \item un capo con lo stesso codice del proprietario viene escluso.
+\end{itemize}
+
+\noindent
+Per ogni coppia $(p, c)$ si calcolano il numero di osservazioni $n_{pc}$, il numero di righe del proprietario $n_p$, il numero di fotografie in cui compare il capo $n_c$ e il numero totale di righe $N$. Il lift confronta la frequenza osservata della coppia con quella attesa sotto l'ipotesi di indipendenza:
+\begin{equation}\label{eq:pip-lift}
+  \mathrm{lift}(p, c) = \frac{P(p, c)}{P(p)\,P(c)} = \frac{n_{pc}\,N}{n_p\,n_c}
+\end{equation}
+
+\noindent
+La scrittura nel database è stata ottimizzata per lotti: ogni istruzione riceve l'intero elenco delle righe e lo scorre lato server. Nodi e archi vengono creati in modo idempotente, per cui rieseguire la costruzione sugli stessi dati produce lo stesso grafo. Poiché il database può contenere dati di altre fonti, la costruzione non cancella mai i nodi dei prodotti: prima di riscrivere rimuove soltanto le strutture che essa stessa genera, cioè gli outfit e gli archi di abbinamento.
+
+\newpage
+
+\subsection{Rappresentazione grafica}
+
+Ingrandendo sul grafo, possiamo notare come i nodi vengono messi in relazione tra di loro tramite una rappresentazione generica della struttura. \\
+
+\begin{tikzpicture}[
+    x=1.8cm, y=1.8cm, 
+    every node/.style={draw, ellipse, minimum size=1cm, thick, align=center},
+    arrow/.style={-{Stealth}, thick},
+    lbl/.style={rectangle, draw=none, fill=white, midway, sloped, inner sep=2pt, font=\small}
+]
+
+    % Nodo Centrale
+    \node (PP) at (0,0) {PP};
+
+    % Nodi Periferici
+    \node (P4) at (-2, 1.5) {$P_4$};
+    \node (Outfit_1) at (-3, -0.5) {Outfit};
+    
+    % --- NODI MODIFICATI PER ALLUNGARE L'ARCO ---
+    % P3 spostato più a sinistra e in basso
+    \node (P3) at (-1.5, -2.5) {$P_3$};
+    % Outfit_2 spostato più a destra e in basso
+    \node (Outfit_2) at (1, -2.5) {Outfit};
+    % --------------------------------------------
+    
+    \node (P2) at (2, -1.5) {$P_2$};
+    \node (Outfit_3) at (4, 0) {Outfit};
+    \node (P1) at (2, 1.5) {$P_1$};
+
+    % --- Connessioni e Etichette ---
+    
+    % Da P4
+    \draw[arrow] (P4) -- node[lbl] {ABBINATO} (PP);
+    \draw[arrow] (P4) -- node[lbl] {OUTFIT} (Outfit_1);
+    
+    % Da Outfit a sinistra
+    \draw[arrow] (Outfit_1) -- node[lbl] {CONTIENE} (PP);
+
+    % Da P3
+    \draw[arrow] (P3) -- node[lbl] {ABBINATO} (PP);
+    \draw[arrow] (P3) -- node[lbl] {OUTFIT} (Outfit_2);
+
+    % Da Outfit_3 verso P1 e P2 (linee dritte)
+    \draw[arrow] (Outfit_3) -- node[lbl] {CONTIENE} (P1);
+    \draw[arrow] (Outfit_3) -- node[lbl] {CONTIENE} (P2);
+
+    % Da PP verso P1 e P2 (linee dritte)
+    \draw[arrow] (PP) -- node[lbl] {ABBINATO} (P1);
+    \draw[arrow] (PP) -- node[lbl] {ABBINATO} (P2);
+
+    % --- RELAZIONE BIDIREZIONALE PP <-> Outfit_3 ---
+    \draw[arrow] (Outfit_3) to[bend left=15] node[lbl] {CONTIENE} (PP);
+    \draw[arrow] (PP) to[bend left=15] node[lbl] {OUTFIT} (Outfit_3);
+
+    % Da Outfit_2 a PP
+    \draw[arrow] (Outfit_2) to[bend left=15] node[lbl] {CONTIENE} (PP);
+
+\end{tikzpicture}
+
+\noindent \\
+Il risultato completo può essere controllato tramite la dashboard di gestione di Neo4j, la quale ci permette di visualizzarlo graficamente. \\
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=1\textwidth]{images/neo4j_visual.png}
+  \caption{}
+  \label{fig:graph Neo4j}
+\end{figure}
+
+\newpage
+
+\subsection{Limiti noti}
+
+\paragraph{Il lift non misura l'abbinamento.}
+Quando ogni prodotto ha un solo outfit, $n_{pc}$ vale 1 per quasi tutte le coppie e l'equazione si riduce a $N / (n_p\,n_c)$, cioè all'inverso della popolarità dei due capi. Ordinare i suggerimenti per lift favorirebbe i capi meno visti; la misura diventa informativa solo con più outfit per prodotto.
+
+\paragraph{Due scale di somiglianza.}
+La somiglianza a catalogo e quella di riferimento provengono da sistemi diversi e hanno soglie diverse, ma nel grafo occupano la stessa proprietà. Senza memorizzare la fonte, lo stesso valore può essere valido per una e insufficiente per l'altra.
+
+\paragraph{Il massimo di sei strategie è sbilanciato.}
+Le strategie che rimuovono il colore o la categoria partono avvantaggiate per costruzione, e il massimo alza la somiglianza di tutti i capi, rendendo necessaria una nuova taratura delle soglie. Una valutazione rigorosa richiederebbe un insieme di ritagli etichettato manualmente.
+
+\paragraph{Occupazione e calzature.}
+Una soglia di occupazione alta per calzature e accessori garantisce ritagli leggibili, ma ne scarta una parte
+consistente; molti outfit si riducono così a una coppia di capi invece che a un look completo.
+
+\paragraph{Articoli non acquistabili.}
+I capi introdotti dal ripiego sulle calzature possono appartenere ad altri marchi e vanno esclusi quando si propone un acquisto.
+
+\newpage
