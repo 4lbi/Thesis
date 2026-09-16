@@ -14,7 +14,7 @@ inconsistenze ontologiche e a un'impennata insostenibile dei costi di inferenza 
 La soluzione ingegneristica proposta supera questi colli di bottiglia integrando un database vettoriale (Qdrant) con un database a grafo (Neo4j),
 facendoli comunicare attraverso la condivisione di identificatori univoci.
 
-\newpage
+\section{Ciclo di vita}
 
 \noindent
 Il ciclo di vita del dato all'interno di questo sistema si divide in due macro-fasi. Durante l'inserimento dei dati (Ingestion),
@@ -22,6 +22,9 @@ i testi grezzi vengono elaborati — tramite LLM o tecniche di Named Entity Reco
 che viene archiviata nel database a grafo Neo4j. Parallelamente, gli stessi documenti vengono convertiti in embedding vettoriali e memorizzati in Qdrant.
 In questo modo, il sistema si assicura che la medesima informazione sia esplorabile sia da un punto di vista puramente semantico sia strutturale.
 
+\newpage
+
+\noindent
 La vera sinergia tra le due tecnologie si esprime nella fase di recupero e generazione (Retrieval \& Generation). Quando l'utente pone una domanda,
 il sistema non cerca di tradurla direttamente in linguaggio per i grafi, ma esegue prima una veloce ricerca vettoriale su Qdrant.
 Questo passaggio permette di isolare in modo efficiente i frammenti di testo semanticamente più pertinenti. Una volta ottenuti gli ID di questi documenti,
@@ -315,6 +318,16 @@ La scrittura nel database è stata ottimizzata per lotti: ogni istruzione riceve
 
 \subsection{Rappresentazione grafica}
 
+Il risultato completo può essere controllato tramite la dashboard di gestione di Neo4j, la quale ci permette di visualizzarlo graficamente. \\
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=1\textwidth]{images/neo4j_visual.png}
+  \caption{}
+  \label{fig:graph Neo4j}
+\end{figure}
+
+\noindent \\
 Ingrandendo sul grafo, possiamo notare come i nodi vengono messi in relazione tra di loro tramite una rappresentazione generica della struttura. \\
 
 \begin{tikzpicture}[
@@ -371,16 +384,6 @@ Ingrandendo sul grafo, possiamo notare come i nodi vengono messi in relazione tr
     \draw[arrow] (Outfit_2) to[bend left=15] node[lbl] {CONTIENE} (PP);
 
 \end{tikzpicture}
-
-\noindent \\
-Il risultato completo può essere controllato tramite la dashboard di gestione di Neo4j, la quale ci permette di visualizzarlo graficamente. \\
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=1\textwidth]{images/neo4j_visual.png}
-  \caption{}
-  \label{fig:graph Neo4j}
-\end{figure}
 
 \newpage
 
