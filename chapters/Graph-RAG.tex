@@ -66,11 +66,11 @@ sulla teoria dei grafi, abbandonando il rigido schema a tabelle dei database rel
 archi (le relazioni esplicite che collegano le entità) e proprietà. Il paradigma a grafo eccelle laddovebil valore dell'informazione risiede primariamente
 nelle interconnessioni tra i dati.
 
-Nel nostro sistema, Neo4j costituisce l'ossatura logica e relazionale dell'applicazione. A valle del processo di estrazione (operato da modelli come SAM3),
+Nel nostro sistema, Neo4j costituisce l'ossatura logica e relazionale dell'applicazione. A valle del processo di estrazione (operato da SAM3),
 Neo4j immagazzina l'ontologia del dominio: istanzia i prodotti come nodi e crea un reticolo denso di archi che ne definiscono categorie, compatibilità,
 specifiche tecniche e logiche di accoppiamento. Il principale vantaggio prestazionale di Neo4j è l'elaborazione Index-Free Adjacency:
 le operazioni di attraversamento del grafo avvengono in tempo reale, poiché ogni nodo mantiene puntatori fisici diretti ai nodi adiacenti.
-Ciò rende Neo4j lo strumento perfetto per il multi-hop reasoning, ovvero la capacità di estrarre percorsi logici complessi con una latenza minima,
+Ciò rende Neo4j lo strumento perfetto per il multi-hop reasoning, ovvero la capacità di estrarre percorsi logici complessi con latenza minima,
 indipendente dalle dimensioni totali del database.
 
 \section{Integrazione di SAM3}
