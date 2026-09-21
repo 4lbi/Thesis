@@ -58,13 +58,13 @@ La recall (anche nota come sensibilità) è la frazione di istanze rilevanti che
 
 $$ Recall =\frac{\text{Istanze recuperate rilevanti}}{\text{Tutte le istanze rilevanti}} = \frac{TP}{TP+FN} $$
 
-\noindent  \\ \\
+\noindent  \\
 Sia la precision che la recall si basano sull'output generato dal nostro modello. Queste metriche possono essere meglio rappresentate tramite questa immagine. 
 \begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.4\textwidth]{images/precision-recall.jpg}
-  \cite{precision_recall}
-  \label{fig:precision_recall}
+    \centering
+    \makebox[\textwidth][c]{\includegraphics[width=0.4\textwidth]{images/precision-recall.jpg}}
+    \cite{precision_recall}
+    \label{fig:precision_recall}
 \end{figure}
 
 \subsubsection{F1 score}
@@ -73,18 +73,35 @@ L'F1 score mette in rapporto tra la precision e la recall, offrendoci una miglio
 \newpage
 
 \subsubsection{mAP}
+\label{sec:mAP}
 La precisione media (mean average precision) è una metrica di apprendimento automatico progettata per valutare gli algoritmi di rilevamento degli oggetti.
 
-Negli articoli scientifici relativi al rilevamento di oggetti, è possibile imbattersi in abbreviazioni come  \(mAP_{50}\) o \(mAP_{95}\). In breve, questa notazione indica la soglia IoU utilizzata per calcolare l'mAP.
+La mAP deriva da una metrica più elementare, l'Average Precision (AP), che si calcola separatamente per ogni classe. Variando la soglia di confidenza, precision e recall cambiano,
+ordinando le predizioni dalla più alla meno confidente e accumulandole una alla volta si ottiene la curva precision-recall della classe, e l'AP ne misura l'area sottesa.
+
+In formula, indicando con $p(r)$ la precision in corrispondenza di una recall $r$:
+$$ AP = \int_{0}^{1} p_{\mathrm{interp}}(r)\, dr \qquad \text{con} \qquad p_{\mathrm{interp}}(r) = \max_{r' \geq r} p(r') $$
+dove $p_{\mathrm{interp}}$ è la curva resa monotona decrescente, così da eliminare le piccole oscillazioni della precision.
+
+La mAP è semplicemente la media delle AP calcolate sulle $N$ classi del dataset:
+$$ mAP = \frac{1}{N} \sum_{c=1}^{N} AP_c $$
+L'AP descrive quindi le prestazioni del modello su una singola classe, mentre la mAP le riassume in un unico valore per l'intero modello.
+
+Negli articoli scientifici relativi al rilevamento di oggetti, è possibile imbattersi in abbreviazioni come  \(mAP_{50}\) o \(mAP_{95}\).
+In breve, questa notazione indica la soglia IoU utilizzata per stabilire se una predizione è corretta durante il calcolo delle AP.
+La \(mAP_{50}\) usa una sola soglia pari a 0,5, mentre la notazione estesa \(mAP_{50:95}\) indica la media delle mAP ottenute con dieci soglie comprese tra 0,5 e 0,95, a passi di 0,05:
+$$ mAP_{50:95} = \frac{1}{10} \sum_{t \in \{0.50,\, 0.55,\, \dots,\, 0.95\}} mAP_{t} $$
+
+\newpage
 
 \subsubsection{IoU}
 L'Intersection over Union viene calcolato dividendo la sovrapposizione tra l'annotazione prevista e quella reale per l'unione di queste due.
 \begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/IoU.jpg}
-  \cite{IoU}
-  \caption{Intersection over Union}
-  \label{fig:IoU}
+    \centering
+    \makebox[\textwidth][c]{\includegraphics[width=0.75\textwidth]{images/IoU.jpg}}
+    \cite{IoU}
+    \caption{Intersection over Union}
+    \label{fig:IoU}
 \end{figure}
 
 \noindent
@@ -101,6 +118,32 @@ Per capire meglio, ecco alcuni esempi :
 Pertanto, la soglia IoU può influenzare significativamente il valore medio finale della Precisione Media. Questa dipendenza introduce variabilità nella valutazione del modello. Questo è negativo, perché può verificarsi uno scenario in cui un modello ottiene buoni risultati con una determinata soglia IoU e prestazioni nettamente inferiori rispetto ad un'altra.
 
 Per contrastare questa debolezza, si è deciso di misurare la Precisione Media per ogni classe e per ogni soglia IoU, per poi calcolare la media dei punteggi ottenuti. \cite{mAP}
+
+\newpage
+
+\subsection{Determinismo delle metriche}
+
+Sebbene le metriche appena descritte restituiscano valori numerici precisi, l'intero ecosistema di valutazione nasconde una natura intrinsecamente stocastica.
+Risulta quindi fondamentale distinguere il piano puramente matematico della misurazione da quello pratico che genera le predizioni.
+
+Il calcolo delle metriche è rigorosamente deterministico: indici come IoU o mAP, a parità di predizioni e ground truth, restituiscono sempre l'identico risultato.
+L'incertezza risiede a monte, nelle complesse dinamiche di addestramento. In questa fase, l'inizializzazione dei pesi, l'applicazione del dropout,
+la data augmentation e la gestione asincrona dei thread sulle GPU introducono componenti casuali ineliminabili.
+Addestrare più volte lo stesso modello produce quindi reti con pesi finali disallineati; per questo motivo, variazioni minime nelle metriche vanno interpretate come naturali fluttuazioni statistiche,
+e non come prove di effettivi miglioramenti architetturali. \cite{tf_nondeterminism}
+
+Sorprendentemente, una quota di variabilità sopravvive anche in fase di inferenza, a pesi ormai congelati. Poiché l'aritmetica in virgola mobile non gode della proprietà associativa,
+l'ordine di esecuzione delle somme altera lievemente il risultato numerico finale.
+Questo ordine dipende da fattori puramente operativi, come la dimensione del batch size, l'hardware o i dettagli implementativi delle librerie sottostanti.
+La stessa documentazione ufficiale di PyTorch avverte che la totale riproducibilità tra versioni software e piattaforme diverse o tra CPU e GPU non è garantita di default,
+a meno di non forzare un determinismo che penalizzerebbe fortemente i tempi di calcolo. \cite{batch_invariance} \cite{pytorch_randomness}
+
+Infine, va considerato che i punteggi di confidenza dei moderni detector risultano tipicamente mal calibrati e tendono a un'eccessiva sicurezza,
+non riflettendo la reale probabilità statistica di correttezza della predizione.
+Per questi motivi, i valori restituiti dalle metriche non vanno intesi come garanzie assolute sul comportamento del modello in produzione, bensì come stime statistiche empiriche,
+strettamente ancorate a una singola esecuzione dell'addestramento e al limitato campione di immagini utilizzato. \cite{detector_calibration}
+
+\newpage
 
 \section{Script}
 Di seguito sono definite le operazioni necessarie, e specifiche per l'addestramento del modello base per la object detection YOLO26n.
@@ -152,10 +195,10 @@ Dei parametri utilizzati nell'addestramento, i più rilevanti per le prestazioni
 Alla fine della fase di addestramento, verranno prodotte delle statistiche che ci serviranno per la valutazione del nostro modello, cioè la precision, recall, F1 score e l'mAP.
 
 \begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/training YOLO26n/training-stats.png}
-  \caption{statistiche}
-  \label{fig:statistiche}
+    \centering
+    \makebox[\textwidth][c]{\includegraphics[width=1.1\textwidth]{images/training YOLO26n/training-stats.png}}
+    \caption{statistiche}
+    \label{fig:statistiche}
 \end{figure}
 
 \noindent
@@ -167,18 +210,19 @@ Possiamo notare come inizialmente i grafici siano più rumorosi, e come invece p
 È il livello minimo di confidenza entro il quale il modello considera l'oggetto come valido. Questo è ottenuto andando a guardare il risultato dell'IoU e controllando che sia al sopra di questa soglia minima, che solitamente è impostata di default al 50\%. \\
 
 \begin{figure}[h!]
-  \centering
-  \begin{minipage}[b]{0.49\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/training YOLO26n/BoxF1_curve.png}
-    \label{fig:f1_curve}
-  \end{minipage}
-  \hfill
-  \begin{minipage}[b]{0.49\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/training YOLO26n/BoxPR_curve.png}
-    \label{fig:pr_curve}
-  \end{minipage}
+    \makebox[\textwidth][c]{
+        \begin{minipage}[b]{0.60\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{images/training YOLO26n/BoxF1_curve.png}
+            \label{fig:f1_curve}
+        \end{minipage}
+        \hspace{0.01\textwidth}
+        \begin{minipage}[b]{0.60\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{images/training YOLO26n/BoxPR_curve.png}
+            \label{fig:pr_curve}
+        \end{minipage}
+    }
 \end{figure}
 
 \noindent
@@ -199,9 +243,9 @@ In sostanza evidenzia il bilanciamento tra la capacità del modello di identific
 La confusion matrix mostra come il modello classifica le classi su cui è stato addestrato. \\
 
 \begin{figure}[h!]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/training YOLO26n/confusion_matrix_normalized.png}
-  \label{fig:confusion_matrix}
+    \centering
+    \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{images/training YOLO26n/confusion_matrix_normalized.png}}
+    \label{fig:confusion_matrix}
 \end{figure}
 
 \noindent

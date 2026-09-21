@@ -35,7 +35,6 @@ per testare e verificare le performance di svariati altri modelli che abbiamo pr
 I modelli da confrontare sono molto diversi tra loro (detector, modelli di segmentazione, modelli open-vocabulary e il modello black box), per cui è necessario che le loro predizioni vengano misurate tutte nello stesso modo.
 Abbiamo quindi definito un unico protocollo di valutazione, indipendente dall'architettura del singolo modello: ogni modello viene eseguito sulle immagini della ground truth, le sue predizioni vengono ricondotte a un formato comune
 e infine confrontate con le annotazioni manuali.
-In questa sezione descriviamo il protocollo in generale, senza entrare nei dettagli con cui ciascun modello viene eseguito.
 
 \subsection{Abbinamento tra predizioni e ground truth}
 
@@ -152,6 +151,8 @@ Precision e Recall dipendono dalla soglia di confidenza scelta. Per avere una mi
   \item l'AP$_{50}$ è l'area sotto questa curva, resa prima monotona decrescente.
 \end{enumerate}
 
+Questa è la stessa Average Precision da cui deriva la mAP introdotta nel capitolo su YOLO (Sezione~\ref{sec:mAP}), calcolata con una soglia di IoU pari a 0,5, o di contenimento per i modelli di segmentazione.
+
 \newpage
 
 \section{Confronto tra modelli}
@@ -174,17 +175,20 @@ I modelli proposti sono stati addestrati a partire da due dataset differenti:
   \item \textbf{HF}: dataset pubblico di object detection per l'abbigliamento disponibile su Hugging Face \cite{HF_dataset}, composto da circa 90.000 immagini.
         Le sue sette categorie originali (\textit{top}, \textit{outer}, \textit{bottom}, \textit{dress}, \textit{shoes}, \textit{bag}, \textit{hat}) sono state ricondotte alle tre classi della valutazione,
         e le maschere per la segmentazione sono state generate con SAM3;
-  \item \textbf{StyleMix}: circa 16.800 immagini provenienti dal catalogo StyleMix, inizialmente prive di annotazioni, etichettate automaticamente tramite SAM3 con la procedura descritta
-        nel capitolo dedicato. Una sola esecuzione di SAM3 ha prodotto sia il dataset di detection che quello di segmentazione, e le immagini della ground truth sono state escluse per evitare sovrapposizioni con il test.
+  \item \textbf{StyleMix}: circa 16.800 immagini provenienti dal catalogo StyleMix. A differenza dell'altro dataset, non si tratta di una raccolta pubblica reperibile in rete,
+        ma di materiale di provenienza privata, fornito direttamente da un brand di abbigliamento e quindi non liberamente distribuibile.
+        Le immagini sono le fotografie utilizzate dal brand per il proprio catalogo, che vanno a rappresentare il dominio applicativo reale a cui il sistema è destinato.
+        Il catalogo è stato fornito privo di annotazioni ed è stato etichettato automaticamente tramite SAM3, con la procedura descritta nella sezione successiva (Sezione~\ref{sec:sam3_annotation}).
 \end{itemize}
 
 \noindent
-Dei modelli proposti, ad eccezione di SAM3, usato senza addestramento, e del black box, tutti i modelli riportati nei grafici sono addestrati sul dataset StyleMix. Fa eccezione SegF\_HF, che condivide l'architettura con SegF\_StyleMix ma è addestrato sul dataset HF:
-il confronto tra i due permette quindi di osservare l'effetto del dataset a parità di modello.
+Dei modelli proposti, ad eccezione di SAM3, usato senza addestramento, e del black box, tutti i modelli riportati nei grafici sono addestrati sul dataset StyleMix.
+Fa eccezione SegF\_HF, che condivide l'architettura con SegF\_StyleMix ma è addestrato sul dataset HF.
 
 \newpage
 
 \subsection{Annotazione con SAM3}
+\label{sec:sam3_annotation}
 
 \noindent
 Per ottenere le annotazioni necessarie all'addestramento, SAM3 è stato impiegato come annotatore automatico, estendendo la procedura descritta nel capitolo dedicato in modo da generare,
@@ -205,10 +209,6 @@ Le maschere ottenute alimentano poi i due dataset:
   \item per la \textbf{segmentazione}, le maschere vengono "dipinte" su un'unica mappa in cui ogni pixel contiene l'identificativo della classe, con $0$ per lo sfondo.
         Le maschere più grandi vengono disegnate per prime, così che un capo piccolo, come una scarpa, non venga coperto da uno più grande in caso di sovrapposizione.
 \end{itemize}
-
-\noindent
-Per ogni immagine viene inoltre salvata un'anteprima con maschere e box sovrapposti, utile a verificare visivamente la qualità delle annotazioni,
-dove le immagini in cui non viene rilevato alcun capo vengono escluse.
 
 \noindent
 La procedura è stata applicata in modo diverso sui due dataset. Per StyleMix, privo di annotazioni, SAM3 ha generato entrambi i dataset a partire da 16.834 immagini. \\
@@ -322,5 +322,31 @@ SAM3 e il black box presentano quindi profili di errore complementari: il primo 
 \noindent
 In termini di F1 score, SAM3 supera il black box su \textit{lower clothing}, lo eguaglia su \textit{footwear} e rimane leggermente al di sotto su \textit{upper clothing}.
 Ottiene inoltre l'F1 score migliore del confronto su tutte le classi, risultando il modello più vicino al riferimento esterno e l'unico in grado di raggiungerne o superarne le prestazioni su almeno una classe.
+
+\newpage
+
+\section{Dai modelli al sistema}
+
+Il percorso seguito fin qui ha avuto un obiettivo preciso, cioè capire quale fosse lo strumento più adatto a riconoscere i capi d'abbigliamento all'interno di una fotografia.
+Dopo aver introdotto i concetti alla base delle reti neurali e del loro addestramento, abbiamo analizzato e addestrato modelli di natura molto diversa, i quali per poterli confrontare in modo equo
+abbiamo costruito una ground truth verificata a mano e un protocollo di valutazione comune, che ha permesso di misurarli tutti con lo stesso metro e di metterli a confronto con un modello esterno di riferimento.
+
+Il risultato di questo confronto è stato netto. SAM3 si è rivelato il modello con la recall più alta, in grado di individuare la quasi totalità dei capi presenti nelle immagini,
+e l'unico a raggiungere o superare il modello "black box" in termini di F1 score su almeno una classe.
+A questo si aggiunge un vantaggio che le metriche non misurano direttamente, SAM3 non richiede alcun addestramento sul nostro dominio, perché viene interrogato in linguaggio naturale,
+e può quindi cercare qualunque tipo di capo semplicemente cambiando il prompt testuale.
+
+Riconoscere un capo, però, non è di per sé un risultato utile per l'utente finale. Un modello di segmentazione restituisce maschere e riquadri, cioè informazioni che descrivono una singola immagine,
+ma non ci dice nulla sui rapporti tra i prodotti di un catalogo, quali capi vengono indossati insieme, quali stili si abbinano, quale articolo potrebbe completare un outfit.
+Per rispondere a domande di questo tipo serve una struttura capace di raccogliere ciò che il modello osserva nelle singole fotografie e di trasformarlo in conoscenza organizzata e interrogabile.
+
+Le fotografie indossate di un catalogo contengono un'informazione implicita molto preziosa: ogni immagine mostra un abbinamento reale, scelto da chi ha curato il catalogo.
+Utilizzando SAM3 per isolare i singoli capi presenti in ciascuna fotografia, e riconducendo poi ogni capo all'articolo corrispondente tramite una ricerca per somiglianza visiva, è possibile trasformare queste co-occorrenze in un grafo,
+in cui i prodotti sono i nodi e gli abbinamenti osservati sono le relazioni tra di essi.
+
+Il lavoro svolto nei capitoli precedenti non rappresenta quindi un fine a sé stante, ma la base su cui poggia un sistema concreto, cioè l'analisi dei modelli ha permesso di scegliere in modo motivato il componente più affidabile,
+e il protocollo di valutazione ha dato una misura oggettiva di quanto ci si possa fidare delle sue predizioni.
+Nel prossimo capitolo vedremo come questo componente venga integrato in un'architettura GraphRAG, che affianca un database vettoriale per la ricerca per somiglianza e un database a grafo per la gestione delle relazioni,
+dando vita a un sistema in grado di rappresentare e interrogare gli abbinamenti tra i prodotti del catalogo.
 
 \newpage

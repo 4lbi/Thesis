@@ -83,12 +83,9 @@ CLASS_PROMPTS = {
 SCORE_THRESHOLD = 0.5      # confidenza minima delle maschere restituite da SAM3
 IOU_MERGE_THRESHOLD = 0.5  # IoU >= soglia --> stesso oggetto
 MIN_AREA_RATIO = 0.001     # scarta le maschere piccole
-
 DEVICE = "cuda"
 DTYPE = torch.float16      # tipo di dato
 \end{lstlisting}
-
-\newpage
 
 \subsection{Main}
 

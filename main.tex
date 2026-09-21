@@ -6,7 +6,7 @@
 
 \usepackage{fontspec}
 
-% --- Gestione Bibliografia (Caricato UNA sola volta) ---
+% --- Gestione Bibliografia (Caricato una sola volta) ---
 \usepackage{csquotes} % Necessario per babel e biblatex
 \usepackage[backend=bibtex, style=numeric, sorting=none]{biblatex}
 \addbibresource{bibliography.bib}
@@ -55,8 +55,12 @@
 {\Huge}
 
 % --- Spaziatura ---
-\usepackage{setspace} 
+\usepackage{setspace}
 \onehalfspacing
+
+% Nessun rientro a inizio paragrafo
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.1\baselineskip}
 
 % --- Grafica ---
 \usepackage{graphicx}
@@ -89,7 +93,7 @@
 	\vspace{1em}
 	{\large Università degli Studi di Verona}
 }
-\author{Alberto Dosso}
+\author{Alberto Dosso \\ VR485765}
 \date{\today}
 
 \begin{document}
@@ -108,11 +112,11 @@
 	\include{chapters/pytorch}
 	\include{chapters/yolo}
 	\include{chapters/sam3}
-	\include{chapters/segformer.tex}
-	\include{chapters/VLM.tex}
-	\include{chapters/GroundingDINO.tex}
-	\include{chapters/tests.tex}
-	\include{chapters/Graph-RAG.tex}
+	\include{chapters/segformer}
+	\include{chapters/VLM}
+	\include{chapters/GroundingDINO}
+	\include{chapters/tests}
+	\include{chapters/Graph-RAG}
 	
 	\printbibliography[heading=bibintoc, title={Bibliografia}]
 	

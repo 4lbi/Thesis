@@ -188,8 +188,13 @@ Frasi diverse possono rilevare lo stesso capo. Due riquadri $A$ e $B$ sono consi
 \paragraph{Un solo capo inferiore.}
 Sotto una gonna il modello rileva anche i collant. Si conserva una sola rilevazione con etichetta \textit{lower clothing}, quella con il punteggio più alto.
 
+\newpage
+
 \paragraph{Coerenza dei vestiti.}
-Su un completo in due pezzi la sagoma è continua e anche la frase \textit{dress} produce una rilevazione; viceversa, su un vestito le frasi per i capi superiori e per quelli inferiori ne rilevano le due metà. Il filtro sfrutta un'informazione nota, cioè il capo in vendita; chi indossa la gonna o la maglia in vendita non indossa anche un vestito, a meno che il capo in vendita non sia un capospalla, che si porta sopra un abito. Nel primo caso le rilevazioni \textit{dress} vengono scartate; nel secondo decide la geometria, attraverso la misura di contenimento di un riquadro $a$ in un riquadro $b$:
+Su un completo in due pezzi la sagoma è continua e anche la frase \textit{dress} produce una rilevazione; viceversa, su un vestito le frasi per i capi superiori e per quelli inferiori ne rilevano le due metà.
+Il filtro sfrutta un'informazione nota, cioè il capo in vendita; chi indossa la gonna o la maglia in vendita non indossa anche un vestito,
+a meno che il capo in vendita non sia un capospalla, che si porta sopra un abito. Nel primo caso le rilevazioni \textit{dress} vengono scartate;
+nel secondo decide la geometria, attraverso la misura di contenimento di un riquadro $a$ in un riquadro $b$:
 \begin{equation}
   \mathrm{dentro}(a, b) = \frac{|a \cap b|}{|a|}
 \end{equation}
@@ -201,8 +206,11 @@ Il secondo giro rileva anche il capo in vendita, chiamato con la sua parola gene
 \begin{equation}
   s(a, b) = 1 - \frac{1}{255\,n} \sum_{i=1}^{n} |a_i - b_i|
 \end{equation}
-Si rimuove il capo più somigliante, se supera una soglia $\tau_{\mathrm{sim}}$. Poiché i due ritagli provengono dalla stessa fotografia, quando rappresentano lo stesso capo sono quasi identici, e un confronto pixel per pixel è sufficiente.
+Si rimuove il capo più somigliante, se supera una soglia $\tau_{\mathrm{sim}}$.
+Poiché i due ritagli provengono dalla stessa fotografia, quando rappresentano lo stesso capo sono quasi identici, e un confronto pixel per pixel è sufficiente.
 Ogni ritaglio è restituito come immagine con canale alfa, in cui la maschera rende trasparente tutto ciò che non appartiene al capo.
+
+\newpage
 
 \subsection{Riconoscimento a catalogo}
 
@@ -214,8 +222,9 @@ Il colore dominante del ritaglio viene espresso nella stessa terminologia usata 
 scambiato per il capo. Se la porzione di ritaglio effettivamente misurata è troppo piccola, si cerca senza colore, dove un colore sbagliato escluderebbe l'articolo corretto.
 
 \noindent
-La forma, cioè la categoria del capo (per esempio felpa, gonna, stivale), si ottiene con una ricerca per vicinanza (\emph{k-nearest neighbours}) in una raccolta di riferimento di capi etichettati: il ritaglio
-viene trasformato in un vettore, e la categoria viene ereditata dal vicino più simile. La categoria viene scartata quando il vicino è troppo lontano o quando fra i vicini più prossimi compaiono troppe categorie diverse.
+La forma, cioè la categoria del capo, si ottiene con una ricerca per vicinanza (\emph{k-nearest neighbours}) in una raccolta di riferimento di capi etichettati, dove il ritaglio
+viene trasformato in un vettore, e la categoria viene ereditata dal vicino più simile.
+La categoria viene scartata quando il vicino è troppo lontano o quando fra i vicini più prossimi compaiono troppe categorie diverse.
 
 \subsubsection{Ricerca}
 
@@ -322,7 +331,7 @@ Il risultato completo può essere controllato tramite la dashboard di gestione d
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=1\textwidth]{images/neo4j_visual.png}
+  \makebox[\textwidth][c]{\includegraphics[width=1.1\textwidth]{images/neo4j_visual.png}}
   \caption{}
   \label{fig:graph Neo4j}
 \end{figure}
