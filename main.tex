@@ -79,7 +79,7 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[RO,LE]{\chaptername~\thechapter} 
+\fancyhead[RO,LE]{\ifnum\value{chapter}>0 \chaptername~\thechapter\fi}
 \fancyfoot[CE,CO]{\thepage}
 \renewcommand{\headrulewidth}{0.05pt}
 \renewcommand{\footrulewidth}{0.05pt}
@@ -89,7 +89,7 @@
 
 % --- Dati Tesi ---
 \title{
-	{Titolo della Tesi} \\
+	{Computer vision e GraphRAG \\ dal riconoscimento visivo al knowledge graph} \\
 	\vspace{1em}
 	{\large Università degli Studi di Verona}
 }
