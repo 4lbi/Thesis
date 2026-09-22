@@ -1,13 +1,14 @@
 # Tesi di laurea
 
-Questa tesi tratta alcuni dei principali approcci recenti alla computer vision, al deep learning e al recupero strutturato delle informazioni. Dopo un'introduzione ai concetti fondamentali — reti neurali, dataset, training, transfer learning e metriche di valutazione — vengono analizzati diversi modelli e strumenti:
+Questa tesi tratta alcuni dei principali approcci recenti alla computer vision, al deep learning e al recupero strutturato delle informazioni. Dopo un'introduzione ai concetti fondamentali — reti neurali, dataset, training, transfer learning e fine-tuning — vengono analizzati diversi modelli e strumenti:
 
 - PyTorch;
-- YOLO26 e le relative metriche, procedure di training e inferenza;
-- Segment Anything (SAM e SAM3), con generazione del dataset, risultati sperimentali e ottimizzazioni dell'inferenza;
+- YOLO26, con le metriche di valutazione (precision, recall, F1 score, IoU e mAP), le procedure di training e inferenza e una riflessione sul determinismo dei risultati;
+- SAM3, con generazione del dataset, risultati sperimentali e ottimizzazioni dell'inferenza;
 - SegFormer;
-- Vision-Language Models (Qwen 3 e Gemma 4);
+- Vision-Language Models (Qwen3-VL e Gemma 4), con il fine-tuning tramite LoRA, cross-entropy e GRPO;
 - Grounding DINO;
+- valutazione comparativa dei modelli su una ground truth annotata manualmente, con un protocollo comune e il confronto con un modello di riferimento esterno;
 - Graph RAG, con l'integrazione tra il database vettoriale Qdrant e il database a grafo Neo4j.
 
 La parte conclusiva descrive una pipeline applicata a un catalogo di abbigliamento: SAM3 segmenta i capi presenti nelle fotografie, una ricerca ibrida li riconduce agli articoli del catalogo e Neo4j rappresenta prodotti, outfit e abbinamenti attraverso un grafo a proprietà. Il capitolo illustra anche il modello dei dati, le strategie di ricerca, le ottimizzazioni adottate e i limiti noti dell'approccio.
@@ -36,7 +37,7 @@ Il progetto è stato scritto in **Visual Studio Code** su macOS, utilizzando:
 - font moderni gestiti tramite `fontspec`;
 - lingua italiana e inglese tramite `babel`.
 
-Il documento usa la classe `report` e include, tra gli altri, i pacchetti `graphicx`, `subcaption`, `amsmath`, `amssymb`, `booktabs`, `microtype`, `listings`, `imakeidx`, `fancyhdr`, `hyperref` e `tikz`. Quest'ultimo viene utilizzato per rappresentare graficamente la struttura del modello dati Graph RAG.
+Il documento usa la classe `report` e include, tra gli altri, i pacchetti `graphicx`, `subcaption`, `amsmath`, `amssymb`, `booktabs`, `microtype`, `listings`, `imakeidx`, `fancyhdr`, `hyperref` e `tikz`. Quest'ultimo viene utilizzato per le figure vettoriali, come la struttura del modello dati Graph RAG.
 
 ## Installazione
 
@@ -54,7 +55,17 @@ Per verificare l'installazione:
 tectonic --version
 ```
 
-### Nota sulla compatibilità con Biber
+## Compilazione
+
+Per compilare manualmente il documento:
+
+```bash
+tectonic -X compile main.tex
+```
+
+## Note storiche
+
+### Compatibilità con Biber
 
 Una versione precedente del progetto utilizzava Biber. Poiché la sua versione deve essere compatibile con quella di BibLaTeX distribuita da Tectonic, su macOS Intel era stata installata manualmente la versione **2.17**:
 
@@ -81,15 +92,3 @@ biber --version
 ```
 
 > Questa procedura è conservata come riferimento ed è necessaria soltanto impostando nuovamente `backend=biber` in `main.tex`. Il binario indicato è specifico per macOS Intel (`x86_64`); su Apple Silicon occorre usare una versione adatta all'architettura in uso.
-
-## Compilazione
-
-Per compilare manualmente il documento:
-
-```bash
-tectonic -X compile main.tex
-```
-
-## Licenza
-
-Non è stata ancora definita una licenza per questo repository.
